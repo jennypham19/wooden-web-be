@@ -2,13 +2,17 @@
 const express = require('express');
 
 // Import các file route riêng lẻ
+const authRoute = require('../routes/auth.route');
 
 
 const router = express.Router();
 
 // Tạo một mảng chứa các route và đường dẫn của chúng
 const defaultRoutes = [
-
+  {
+    path: '/auth',
+    route: authRoute,
+  },
 ]
 
 // Dùng vòng lặp để gắn tất cả các route vào router chính
