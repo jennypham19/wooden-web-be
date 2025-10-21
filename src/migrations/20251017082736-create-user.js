@@ -7,14 +7,14 @@ module.exports = {
     await queryInterface.sequelize.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`);
 
     await queryInterface.createTable('Users', {
-      // id của user, kiểu UUID, khóa chính, không null, sự sinh UUID v4 khi tạo mới
-      id: { 
-        type: Sequelize.UUID,
-        defaultValue: Sequelize.literal('gen_random_uuid()'), // Nếu dùng PostgreSQL, tạo UUID bằng pgcrypto
-        // hoặc với MySQL: Sequelize.literal('(UUID())')
-        primaryKey: true,
-        allowNull: false
-      },
+        // id của user, kiểu UUID, khóa chính, không null, sự sinh UUID v4 khi tạo mới
+        id: { 
+            type: Sequelize.UUID,
+            defaultValue: Sequelize.literal('gen_random_uuid()'), // Nếu dùng PostgreSQL, tạo UUID bằng pgcrypto
+            // hoặc với MySQL: Sequelize.literal('(UUID())')
+            primaryKey: true,
+            allowNull: false
+        },
         // Cột email: email của user, kiểu chuỗi, không null, là duy nhất
         email: { 
             type: Sequelize.STRING, 

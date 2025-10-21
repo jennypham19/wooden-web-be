@@ -3,6 +3,7 @@ const express = require('express');
 
 // Import các file route riêng lẻ
 const authRoute = require('../routes/auth.route');
+const permissionRoute = require('../routes/permission.route');
 
 
 const router = express.Router();
@@ -12,6 +13,10 @@ const defaultRoutes = [
   {
     path: '/auth',
     route: authRoute,
+  },
+  {
+    path: '/permissions',
+    route: permissionRoute
   },
 ]
 
