@@ -35,7 +35,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         // Cột role: chức vụ của user, không null, mặc định là carpenter (thợ mộc)
         role: {
-            type: DataTypes.ENUM('admin', 'factory_manager', 'production_planner', 'production_supervisor', 'carpenter', 'qc', 'inventory_manager', 'technical_design', 'accounting'),
+            type: DataTypes.ENUM('admin', 'factory_manager', 'production_planner', 'production_supervisor', 'carpenter', 'qc', 'inventory_manager', 'technical_design', 'accounting', 'employee'),
             allowNull: false,
             defaultValue: 'carpenter'
         },
