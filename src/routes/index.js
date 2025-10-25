@@ -4,7 +4,9 @@ const express = require('express');
 // Import các file route riêng lẻ
 const authRoute = require('../routes/auth.route');
 const permissionRoute = require('../routes/permission.route');
-
+const uploadRoute = require('../routes/upload.route');
+const userRoute = require('../routes/user.route');
+const customerRoute = require('../routes/customer.route');
 
 const router = express.Router();
 
@@ -18,6 +20,18 @@ const defaultRoutes = [
     path: '/permissions',
     route: permissionRoute
   },
+  {
+    path: '/image',
+    route: uploadRoute
+  },
+  {
+    path: '/users',
+    route: userRoute,
+  },
+  {
+    path: '/customers',
+    route: customerRoute
+  }
 ]
 
 // Dùng vòng lặp để gắn tất cả các route vào router chính

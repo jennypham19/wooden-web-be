@@ -10,7 +10,11 @@ module.exports = (sequelize, DataTypes) => {
             MenuAction.belongsTo(models.Action, {
                 foreignKey: 'action_id',
                 as: 'action'
-            })
+            });
+            MenuAction.hasMany(models.UserAction, {
+                foreignKey: 'menu_action_id',
+                as: 'menuAction'
+            });
         }
     }
 

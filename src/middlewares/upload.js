@@ -15,9 +15,9 @@ const storage = new CloudinaryStorage({
     
     
     // mặc định folder gốc
-    let folder = "museum";
+    let folder = "wooden";
     //Nếu gửi lên kèm theo type => tạo folder con theo type
-    // ví dụ req.body.type = 'employees' => museum/employees
+    // ví dụ req.body.type = 'employees' => wooden/employees
     if (req.body.type) {
       folder = `${folder}/${req.body.type}`;
     }else {

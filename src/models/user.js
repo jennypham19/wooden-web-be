@@ -5,7 +5,14 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
     class User extends Model {
         static associate(models) {
-
+            User.hasMany(models.UserAction, {
+                foreignKey: 'user_id',
+                as: 'userAction'
+            });
+            User.hasMany(models.UserMenu, {
+                foreignKey: 'user_id',
+                as: 'userMenu'
+            });
         }
     }
 
@@ -95,6 +102,11 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false // true là đã reset, false là không
+        },
+        // Cột is_permission: trạng thái phân quyền của user, kiểu boolean, mặc định là false
+        is_permission: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
         }
     }, {
         sequelize,

@@ -47,6 +47,12 @@ router
 router
     .route('/menu-with-action')
     .get(permissionController.getMenuWithAction)
+
 /* 3. Nhóm quyền */
+// Tạo quyền
+router.post('/create-user-permission', validate(permissionValidation.createOrUpdateUserRole), permissionController.createUserRole)
+
+// Chỉnh sửa quyền
+router.put('/update-user-permission', validate(permissionValidation.createOrUpdateUserRole), permissionController.updateUserRole)
 
 module.exports = router;

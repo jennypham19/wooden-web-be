@@ -6,6 +6,10 @@ module.exports = (sequelize, DataTypes) => {
             Menu.hasMany(models.MenuAction, {
                 foreignKey: 'menu_id',
                 as: 'menusAction'
+            });
+            Menu.hasMany(models.UserMenu, {
+                foreignKey: 'menu_id',
+                as: 'menus'
             })
         }
     }

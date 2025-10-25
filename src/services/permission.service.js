@@ -1,7 +1,8 @@
 const { Op } = require('sequelize');
-const { Action, Menu, MenuAction, RoleGroup, RoleGroupMenu, RoleGroupAction, UserRole, sequelize } = require('../models');
+const { Action, Menu, MenuAction, UserMenu, UserAction, sequelize } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');
+const userService = require('../services/user.service');
 
 /* 1. Thao tác */
 // Lấy chi tiết 1 bản ghi của thao tác
@@ -305,7 +306,130 @@ const getMenuWithAction = async () => {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Lỗi khi lấy danh sách: ' + error.message);
     }
 }
+
 /* 3. Nhóm quyền */
+// Đệ quy hàm lưu chức năng và thao tác
+const buildPermission = async(userId, permissions) => {
+    const menuMap = {};
+    const actionIds = [];
+    for(const item of permissions) {
+        const menu = await Menu.findOne({ where: { code: item.code }});
+        if(!menu) {
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại chức năng này.");
+        }
+        menuMap[item.code] = menu.id;
+        await UserMenu.create({ user_id: userId, menu_id: menu.id });
+        for(const action of item.actions) {
+            const actionModel = await MenuAction.findOne({ where: { code: action.code }});
+            if(actionModel) {
+                actionIds.push(actionModel.id);
+                await UserAction.create({ user_id: userId, menu_action_id: actionModel.id })
+            }
+        }
+    }
+}
+// Tạo quyền
+const createUserRole = async({ userId, permissions }) => {
+    try {
+        const user = await userService.getUserById(userId);
+        user.is_permission = true;
+        user.save();
+        await buildPermission(userId, permissions);
+        return user;
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message);
+    }
+}
+
+// Đệ quy upsert thao tác và chức năng
+const upsertMenusAndActions = async(id, menu) => {
+    // Menu
+    await UserMenu.findOrCreate({
+        where: { user_id: id, menu_id: menu.id },
+        defaults: { user_id: id, menu_id: menu.id }
+    })
+
+    // Actions
+    if(menu.actions){
+        for(const action of menu.actions) {
+            await UserAction.findOrCreate({
+                where: { user_id: id, menu_action_id: action.id },
+                defaults: { user_id: id, menu_action_id: action.id }
+            })
+        }
+    }
+
+    // Children
+    if(menu.children){
+        for(const child of menu.children) {
+            await upsertMenusAndActions(id, child)
+        }
+    }
+}
+
+//Chỉnh sửa quyền kèm theo chức năng và thao tác
+const updateUserRole = async({ userId, permissions}) => {
+    try {
+        // Lấy danh sách menu/action hiện có trong DB
+        const existingMenus = await UserMenu.findAll({ where: { user_id: userId } });
+        const existingActions = await UserAction.findAll({ where: { user_id: userId } });
+
+
+        const existingMenuIds = existingMenus.map(m => m.menu_id);
+        const existingActionIds = existingActions.map(a => a.menu_action_id);
+    
+        // Danh sách mới (flatten từ tree)
+        const newMenuIds = [];
+        const newActionIds = [];
+    
+        const collectIds = (menu) => {
+            newMenuIds.push(menu.id);
+            if (menu.actions) newActionIds.push(...menu.actions.map(a => a.id));
+            if (menu.children) menu.children.forEach(collectIds);
+        };
+
+        if (permissions) {
+        permissions.forEach(collectIds);
+        }
+
+        // thêm hoặc giữ nguyên upsert permissions
+        if(permissions){
+            for(const menu of permissions) {
+                await upsertMenusAndActions(userId, menu)
+            }
+        }
+
+        // Xóa các quyền đã bỏ đi
+        const menusToDelete = existingMenuIds.filter(id => !newMenuIds.includes(id));
+        const actionsToDelete = existingActionIds.filter(id => !newActionIds.includes(id));
+
+        if (menusToDelete.length > 0) {
+            await UserMenu.destroy({
+                where: {
+                    user_id: userId,
+                    menu_id: menusToDelete
+                }
+            });
+        }
+
+        if (actionsToDelete.length > 0) {
+            await UserAction.destroy({
+                where: {
+                    user_id: userId,
+                    menu_action_id: actionsToDelete
+                }
+            });
+        }
+
+        // Trả lại thông tin user sau khi cập nhật quyền
+        const userRole = await userService.getDetailUserWithPermission(userId);
+        return userRole
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Đã có lỗi xảy ra: ' + error.message);
+    }
+}
+
 
 module.exports = {
     getActionById,
@@ -316,5 +440,7 @@ module.exports = {
     getMenus,
     getMenuById,
     updateMenu,
-    getMenuWithAction
+    getMenuWithAction,
+    createUserRole,
+    updateUserRole
 }
