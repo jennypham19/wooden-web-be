@@ -13,6 +13,10 @@ module.exports = (sequelize, DataTypes) => {
                 foreignKey: 'user_id',
                 as: 'userMenu'
             });
+            User.hasMany(models.Product, {
+                foreignKey: 'manager_id',
+                as: 'userProducts'
+            })
         }
     }
 
@@ -68,7 +72,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         // Cột work: công việc của user, kiểu chuỗi, không null
         work: {
-            type: DataTypes.STRING,
+            type: DataTypes.TEXT,
             allowNull: false
         },
         // Cột department: phòng ban của user, kiểu chuỗi, không null

@@ -15,6 +15,13 @@ router.get(
     userController.getDetailUserWithPermission
 )
 
+// lấy danh sách
+router.get(
+    '/get-list-accounts',
+    validate(userValidation.getQuery),
+    userController.getListAccounts
+)
+
 router.use(protect, authorize('admin'));
 
 // tạo 
@@ -22,13 +29,6 @@ router.post(
     '/create-user',
     validate(userValidation.createUser),
     userController.createUser
-)
-
-// lấy danh sách
-router.get(
-    '/get-list-accounts',
-    validate(userValidation.getQuery),
-    userController.getListAccounts
 )
 
 // lấy danh sách
