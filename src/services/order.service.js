@@ -1,12 +1,13 @@
 const { StatusCodes } = require('http-status-codes');
-const { Order, Customer } = require('../models');
+const { Order, Customer, Product, User, sequelize } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { Op } = require('sequelize');
 
 const createOrder = async(orderBody) => {
+    const transaction = await sequelize.transaction();
     try {
-        const { customerId, codeOrder, name, dateOfReceipt, dateOfPayment, proccess, status, amount, requiredNote } = orderBody;
-        await Order.create({
+        const { customerId, codeOrder, name, dateOfReceipt, dateOfPayment, proccess, status, amount, requiredNote, products } = orderBody;
+        const order = await Order.create({
             customer_id: customerId,
             code_order: codeOrder,
             name,
@@ -16,8 +17,21 @@ const createOrder = async(orderBody) => {
             status,
             amount,
             required_note: requiredNote
-        })
+        }, { transaction })
+        for(const product of products) {
+            await Product.create({
+                name: product.name,
+                description: product.description,
+                target: product.target,
+                order_id: order.id,
+                manager_id: product.managerId,
+                status: product.status,
+                proccess: product.proccess
+            }, { transaction })
+        }
+        await transaction.commit();
     } catch (error) {
+        await transaction.rollback();
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Đã có lỗi xảy ra: ' + error.message)
     }
 }
@@ -42,6 +56,11 @@ const queryOrders = async(queryOptions) => {
                 {
                     model: Customer,
                     as: 'ordersCustomer'
+                },
+                {
+                    model: Product,
+                    as: 'orderProducts',
+                    include: [{ model: User, as: 'productsUser' }]
                 }
             ],
             limit,
@@ -64,7 +83,25 @@ const queryOrders = async(queryOptions) => {
                 amount: newOrder.amount,
                 requiredNote: newOrder.required_note,
                 createdAt: newOrder.createdAt,
-                updatedAt: newOrder.updatedAt
+                updatedAt: newOrder.updatedAt,
+                products: (newOrder.orderProducts ?? [])
+                    .filter((el) => el.order_id === newOrder.id)
+                    .map((product) => {
+                        return {
+                            id: product.id,
+                            name: product.name,
+                            description: product.description,
+                            target: product.target,
+                            process: product.proccess,
+                            status: product.status,
+                            manager: {
+                                fullName: product.productsUser.full_name,
+                                role: product.productsUser.role,
+                                phone: product.productsUser.phone
+                            }
+                        }
+                    })
+                
             }
         })
         return{
