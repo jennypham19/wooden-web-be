@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.use(protect, authorize('employee'));
 
-// Tạo mới tài khoản
+// Tạo mới khách hàng
 router
     .route('/create-customer')
     .post(validate(customerValidation.createCustomer), customerController.createCustomer)
@@ -17,5 +17,14 @@ router
 router
     .route('/get-list-customers')
     .get(validate(customerValidation.queryCustomers), customerController.queryListCustomers)
-    
+
+// Chỉnh sửa khách hàng
+router
+    .route('/update-customer/:id')
+    .put(validate(customerValidation.updateCustomer), customerController.updateCustomer)
+
+// Xóa khách hàng
+router
+    .route('/delete-customer/:id')
+    .delete(validate(customerValidation.queryCustomer), customerController.deleteCustomer)
 module.exports = router;

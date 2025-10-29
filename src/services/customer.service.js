@@ -3,6 +3,14 @@ const { Customer } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { Op } = require('sequelize');
 
+// Lấy chi tiết khách hàng
+const getCustomerById = async(id) => {
+    const customer = await Customer.findByPk(id);
+    if(!customer){
+        throw new ApiError(StatusCodes.NOT_FOUND, "Không tìm thấy khách hàng này.")
+    }
+    return customer;
+}
 
 // Thêm mới khách hàng
 const createCustomer = async (custormerBody) => {
@@ -57,7 +65,38 @@ const queryListCustomers = async (queryOptions) => {
     }
 }
 
+// Chỉnh sửa khách hàng
+const updateCustomer = async (id, custormerBody) => {
+    try {
+        const { name, phone, address } = custormerBody;
+        const customer = await getCustomerById(id);
+        customer.name = name;
+        customer.phone = phone;
+        customer.address = address;
+        customer.save();
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+// Xóa khách hàng
+const deleteCustomer = async(id) => {
+    try {
+        // Nếu tồn tại đơn hàng được gắn với khách hàng 
+        const customer = await getCustomerById(id);
+
+        // Nếu không có thì được xóa;
+        await Customer.destroy({ where: { id }})
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message);
+    }
+}
+
 module.exports = {
     createCustomer,
-    queryListCustomers
+    queryListCustomers,
+    updateCustomer,
+    deleteCustomer
 }
