@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
             Product.belongsTo(models.User, {
                 foreignKey: 'manager_id',
                 as: 'productsUser'
+            });
+            Product.hasOne(models.BOM, {
+                foreignKey: 'product_id',
+                as: 'productBOM'
             })
         }
     }

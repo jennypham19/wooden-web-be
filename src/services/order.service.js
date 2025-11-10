@@ -1,5 +1,5 @@
 const { StatusCodes } = require('http-status-codes');
-const { Order, Customer, Product, User, sequelize } = require('../models');
+const { Order, Customer, Product, User, BOM, sequelize } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { Op } = require('sequelize');
 

@@ -6,7 +6,7 @@ const validate = require('../middlewares/validate');
 
 const router = express.Router();
 
-router.use(protect, authorize('employee'))
+router.use(protect, authorize('employee', 'technical_design'))
 
 router.post('/create-order', validate(orderValidation.createOrder), orderController.createOrder)
 
