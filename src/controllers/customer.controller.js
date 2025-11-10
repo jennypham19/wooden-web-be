@@ -5,7 +5,7 @@ const catchAsync = require('../utils/catchAsync');
 
 const createCustomer = catchAsync(async (req, res) => {
     await customerService.createCustomer(req.body);
-    res.status(StatusCodes.CREATED).send({ success: true, message: 'Thêm mới tài khoản thành công.'})
+    res.status(StatusCodes.CREATED).send({ success: true, message: 'Thêm mới khách hàng thành công.'})
 })
 
 const queryListCustomers = catchAsync(async (req, res) => {
@@ -14,7 +14,20 @@ const queryListCustomers = catchAsync(async (req, res) => {
     res.status(StatusCodes.OK).send({ success: true, message: 'Lấy danh sách thành công.', data: customers})
 })
 
+// Chỉnh sửa khách hàng
+const updateCustomer = catchAsync(async (req, res) => {
+    await customerService.updateCustomer(req.params.id, req.body);
+    res.status(StatusCodes.CREATED).send({ success: true, message: 'Chỉnh sửa khách hàng thành công.'})
+})
+
+// Xóa khách hàng
+const deleteCustomer = catchAsync(async (req, res) => {
+    await customerService.deleteCustomer(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Xóa khách hàng thành công.'})
+})
 module.exports = {
     createCustomer,
-    queryListCustomers
+    queryListCustomers,
+    updateCustomer,
+    deleteCustomer
 }
