@@ -20,6 +20,10 @@ module.exports = (sequelize, DataTypes) => {
             User.hasMany(models.BOM, {
                 foreignKey: 'user_id',
                 as: 'userBOMs'
+            });
+            User.hasMany(models.DesignRequest, {
+                foreignKey: 'curator_id',
+                as: 'curatorDesignRequests'
             })
         }
     }

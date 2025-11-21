@@ -74,7 +74,10 @@ const queryOrders = async(queryOptions) => {
             return {
                 id: newOrder.id,
                 name: newOrder.name,
-                nameCustomer: newOrder.ordersCustomer.name,
+                customer: {
+                    id: newOrder.ordersCustomer.id,
+                    name: newOrder.ordersCustomer.name
+                },
                 codeOrder: newOrder.code_order,
                 dateOfReceipt: newOrder.date_of_receipt,
                 dateOfPayment: newOrder.date_of_payment,

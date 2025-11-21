@@ -33,4 +33,11 @@ router.post(
     uploadController.uploadEmployeeImageMultiple
 );
 
+// upload nhiều files (ảnh, PDF, DOC, DOCX)
+router.post(
+    '/upload-files', 
+    upload.array('files', 10), 
+    checkFileSize.checkFilesSize,
+    uploadController.uploadFiles
+);
 module.exports = router;

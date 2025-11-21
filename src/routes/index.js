@@ -10,6 +10,7 @@ const customerRoute = require('../routes/customer.route');
 const orderRoute = require('../routes/order.route');
 const productRoute = require('../routes/product.route');
 const bomRoute = require('../routes/bom.route');
+const designRequestRoute = require('../routes/design-request.route')
 
 const router = express.Router();
 
@@ -46,6 +47,10 @@ const defaultRoutes = [
   {
     path: '/boms',
     route: bomRoute
+  },
+  {
+    path: '/design-requests',
+    route: designRequestRoute
   }
 ]
 

@@ -8,6 +8,19 @@ const checkFilesSize = (req, res, next) => {
   if (!req.files || req.files.length === 0) {
     return next();
   }
+    const allowedDocs  = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+
+    const allowedRaw = [
+      "application/zip",
+      "application/x-rar-compressed",
+      "text/plain",
+      "application/json",
+      "text/csv"
+    ];
 
   for (const file of req.files) {
     if (file.mimetype.startsWith("image")) {
@@ -22,11 +35,31 @@ const checkFilesSize = (req, res, next) => {
           new ApiError(StatusCodes.BAD_REQUEST, "Video vượt quá dung lượng 100MB!")
         );
       }
+    } else if (allowedRaw.includes(file.mimetype)) {
+      if (file.size > 10 * 1024 * 1024) {
+        return next(
+          new ApiError(
+            StatusCodes.BAD_REQUEST,
+            "File PDF vượt quá dung lượng 10MB!"
+          ),
+          false
+        );
+      }
+    } else if (allowedDocs.includes(file.mimetype)) {
+      if (file.size > 10 * 1024 * 1024) {
+        return next(
+          new ApiError(
+            StatusCodes.BAD_REQUEST,
+            "File DOC, DOCX vượt quá dung lượng 10MB!"
+          ),
+          false
+        );
+      }
     } else {
       return next(
         new ApiError(
           StatusCodes.BAD_REQUEST,
-          "Chỉ cho phép upload file ảnh hoặc video!"
+          "Chỉ cho phép upload file ảnh, PDF, DOC, DOCX hoặc video!"
         )
       );
     }
@@ -41,7 +74,11 @@ const checkFileSize = (req, res, next) => {
   if (!req.file) {
     return next();
   }
-
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
   const file = req.file;
 
     if (file.mimetype.startsWith("image")) {
@@ -54,6 +91,16 @@ const checkFileSize = (req, res, next) => {
       if (file.size > 500 * 1024 * 1024) {
         return next(
           new ApiError(StatusCodes.BAD_REQUEST, "Video vượt quá dung lượng 500MB!")
+        );
+      }
+    } else if (allowedTypes.includes(file.mimetype)) {
+      if (file.size > 10 * 1024 * 1024) {
+        return next(
+          new ApiError(
+            StatusCodes.BAD_REQUEST,
+            "File PDF, DOC, DOCX vượt quá dung lượng 10MB!"
+          ),
+          false
         );
       }
     } else {

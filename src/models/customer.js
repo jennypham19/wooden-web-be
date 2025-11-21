@@ -8,6 +8,10 @@ module.exports = (sequelize, DataTypes) => {
             Customer.hasMany(models.Order, {
                 foreignKey: 'customer_id',
                 as: 'customerOrders'
+            });
+            Customer.hasMany(models.DesignRequest, {
+                foreignKey: 'customer_id',
+                as: 'customerDesignRequests'
             })
         }
     }

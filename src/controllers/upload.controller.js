@@ -60,8 +60,28 @@ const uploadEmployeeImageMultiple = catchAsync(async (req, res) => {
         }
 });
 
+const uploadFiles = catchAsync(async (req, res) => {
+        try {
+            const files = req.files.map(file => ({
+                url: file.path,
+                name: file.filename
+            }));
+            const folder = req.body.type || 'wooden' // folder đã lưu
+            res.status(StatusCodes.OK).send({
+                success: true,
+                message: 'Upload file thành công',
+                data: {
+                    files,
+                    folder,
+                }
+            })
+        } catch (error) {
+            throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Đã có lỗi xảy ra ' + error.message);
+        }
+});
 
 module.exports = {
     uploadImageSingle,
-    uploadEmployeeImageMultiple
+    uploadEmployeeImageMultiple,
+    uploadFiles
 }

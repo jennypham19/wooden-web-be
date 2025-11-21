@@ -14,6 +14,10 @@ module.exports = (sequelize, DataTypes) => {
             Product.hasOne(models.BOM, {
                 foreignKey: 'product_id',
                 as: 'productBOM'
+            });
+            Product.hasOne(models.DesignRequest, {
+                foreignKey: 'product_id',
+                as: 'productDesignRequest'
             })
         }
     }
