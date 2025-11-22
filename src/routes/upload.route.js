@@ -1,7 +1,7 @@
 //src/routes/upload.route.js
 const express = require('express');
 const { protect, authorize } = require('../middlewares/auth');
-const upload = require('../middlewares/upload');
+const { upload, uploadAndSign, uploadBulkAndSign} = require('../middlewares/upload');
 const uploadController = require('../controllers/upload.controller');
 const checkFileSize = require("../middlewares/checkFileSize");
 
@@ -36,7 +36,7 @@ router.post(
 // upload nhiều files (ảnh, PDF, DOC, DOCX)
 router.post(
     '/upload-files', 
-    upload.array('files', 10), 
+    uploadBulkAndSign('files', 10), 
     checkFileSize.checkFilesSize,
     uploadController.uploadFiles
 );

@@ -33,7 +33,7 @@ const createDesignRequest = {
             'string.empty': 'Môt tả không được để trống',
             'any.required': 'Mô tả là trường bắt buộc'
         }),
-        specialRequirement: Joi.string().optional(),
+        specialRequirement: Joi.string().allow('', null),
         inputFiles: Joi.array().optional(),
         referenceLinks: Joi.array().optional(),
         technicalSpecification: Joi.object({
@@ -62,8 +62,19 @@ const queryDesignRequest = {
     })
 }
 
+const updateStatusAndDate = {
+    params: Joi.object().keys({
+        id: Joi.string().required()
+    }),
+    body: Joi.object().keys({
+        status: Joi.string().optional(),
+        completedDate: Joi.string().required()
+    })
+}
+
 module.exports = {
     queryDesignRequests,
     queryDesignRequest,
-    createDesignRequest
+    createDesignRequest,
+    updateStatusAndDate
 }

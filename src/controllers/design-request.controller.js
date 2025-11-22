@@ -22,8 +22,15 @@ const getDetailDesignRequets = catchAsync(async(req, res) => {
     res.status(StatusCodes.OK).send({ success: true, message: 'Lấy bản ghi thành công', data: designRequest})
 })
 
+// Cập nhật trạng thái và ngày hoàn thành
+const updateStatusAndDate = catchAsync(async(req, res) => {
+    await designRequestService.updateStatusAndDate(req.params.id, req.body);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Cập nhật bản ghi thành công.'})
+})
+
 module.exports = {
     queryListDesignRequests,
     createDesignRequest,
-    getDetailDesignRequets
+    getDetailDesignRequets,
+    updateStatusAndDate
 }

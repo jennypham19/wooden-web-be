@@ -62,8 +62,8 @@ const uploadEmployeeImageMultiple = catchAsync(async (req, res) => {
 
 const uploadFiles = catchAsync(async (req, res) => {
         try {
-            const files = req.files.map(file => ({
-                url: file.path,
+            const files = req.uploadedFiles.map(file => ({
+                url: file.url,
                 name: file.filename
             }));
             const folder = req.body.type || 'wooden' // folder đã lưu

@@ -32,4 +32,12 @@ router.get(
     designRequestController.getDetailDesignRequets
 )
 
+// Cập nhật trạng thái và ngày hoàn thành
+router.put(
+    '/update-status-date/:id',
+    authorize('technical_design'),
+    validate(designRequestValidation.updateStatusAndDate),
+    designRequestController.updateStatusAndDate
+)
+
 module.exports = router;

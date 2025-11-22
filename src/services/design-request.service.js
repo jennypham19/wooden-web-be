@@ -195,8 +195,25 @@ const getDetailDesignRequets = async(id) => {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
 }
+
+// Cập nhật trạng thái và ngày hoàn thành
+const updateStatusAndDate = async(id, updateBody) => {
+    try {
+        const { status, completedDate } = updateBody;
+        const designRequestDB = await DesignRequest.findByPk(id);
+        if(!designRequestDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Bản ghi yêu cầu thiết kế không tồn tại.");
+        }
+        await designRequestDB.update({
+            status, completed_date: completedDate
+        })
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
 module.exports = {
     queryListDesignRequest,
     createDesignRequest,
-    getDetailDesignRequets
+    getDetailDesignRequets,
+    updateStatusAndDate
 }

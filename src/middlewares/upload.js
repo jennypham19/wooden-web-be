@@ -8,59 +8,59 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { v4: uuidv4 } = require("uuid");
 const crypto = require('crypto');
 
-// ========== Hàm lấy resource_type cho Cloudinary ==========
 const getCloudinaryResourceType = (mimetype) => {
   if (mimetype.startsWith("image/")) return "image";
   if (mimetype.startsWith("video/")) return "video";
-  // PDF, DOC, DOCX, ZIP, TXT, CSV, JSON => raw
   return "raw";
 };
 
-// Lưu trực tiếp vào Cloudinary với folder động
+// Signed URL đúng chuẩn: folder/public_id.format
+const signCloudinaryUrl = (publicId) => {
+  return cloudinary.url(publicId, {
+    resource_type: "raw",
+    type: "authenticated",
+    sign_url: true,
+    secure: true
+  });
+};
+
 const storage = new CloudinaryStorage({
   cloudinary,
-  params:(req, file) => {
-    // mặc định folder gốc
+  params: (req, file) => {
     let folder = "wooden";
-    //Nếu gửi lên kèm theo type => tạo folder con theo type
-    // ví dụ req.body.type = 'employees' => wooden/employees
     if (req.body.type) {
       folder = `${folder}/${req.body.type}`;
-    }else {
-      console.warn("⚠️ req.body.type missing, fallback to museum/");
     }
 
-    // Lấy tên gốc không đuôi
-    let baseName = path.parse(file.originalname).name;
+    const ext = path.extname(file.originalname).toLowerCase().replace(".", "");
 
-    // sanitize tên: chỉ cho phép chữ, số, dấu gạch ngang và gạch dưới
-    baseName = baseName.replace(/[^a-zA-Z0-9-_]/g, "_");
+    const baseName = path.parse(file.originalname).name.replace(/[^a-zA-Z0-9-_]/g, "_");
     const fileHash = crypto.createHash("md5").update(baseName).digest("hex");
 
-    // LẤY ĐUÔI FILE: .pdf, .doc, .docx
-    const ext = path.extname(file.originalname);
+    const publicId = `${baseName}_${fileHash}`; // ⚠ KHÔNG có .pdf
+
+    const resourceType = getCloudinaryResourceType(file.mimetype);
 
     return {
       folder,
-      resource_type: getCloudinaryResourceType(file.mimetype),
+      resource_type: resourceType,
+      type: resourceType === "raw" ? "authenticated" : "upload",
+      public_id: publicId,
+      format: ext, // chuẩn Cloudinary
+      overwrite: false,
       use_filename: true, // giữ tên gốc của file
       unique_filename: false, // không thêm chuỗi random vào
-      public_id: `${baseName}_${fileHash}${ext}`, // lồng originalname vào public_id
-      overwrite: false, // nếu trùng báo lỗi,
-      type: "upload"
-    }
+    };
   }
-})
+});
 
 const upload = multer({
-  storage: storage,
-  // Giới hạn size CHUẨN (multer tự kiểm tra)
+  storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // Giới hạn chung 100MB (Cloudinary free cũng max ~100MB)
+    fileSize: 100 * 1024 * 1024,
   },
-  // Chặn những file không cho phép
   fileFilter: (req, file, cb) => {
-    const allowedDocs  = [
+    const allowedDocs = [
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -74,57 +74,82 @@ const upload = multer({
       "text/csv"
     ];
 
-    if (file.mimetype.startsWith("image/")) {
-      if (file.size > 5 * 1024 * 1024) {
-        return cb(
-          new ApiError(StatusCodes.BAD_REQUEST, "Ảnh vượt quá dung lượng 5MB!"),
-          false
-        );
-      }
-      return cb(null, true);
-    } else if (file.mimetype.startsWith("video/")) {
-      if (file.size > 100 * 1024 * 1024) {
-        return cb(
-          new ApiError(
-            StatusCodes.BAD_REQUEST,
-            "Video vượt quá dung lượng 100MB!"
-          ),
-          false
-        );
-      }
-      return cb(null, true);
-    } else if (allowedRaw.includes(file.mimetype)) {
-      if (file.size > 10 * 1024 * 1024) {
-        return cb(
-          new ApiError(
-            StatusCodes.BAD_REQUEST,
-            "File PDF vượt quá dung lượng 10MB!"
-          ),
-          false
-        );
-      }
-      return cb(null, true);
-    } else if (allowedDocs.includes(file.mimetype)) {
-      if (file.size > 10 * 1024 * 1024) {
-        return cb(
-          new ApiError(
-            StatusCodes.BAD_REQUEST,
-            "File DOC, DOCX vượt quá dung lượng 10MB!"
-          ),
-          false
-        );
-      }
-      return cb(null, true);
-    } else {
-      return cb(
-        new ApiError(
-          StatusCodes.BAD_REQUEST,
-          "Chỉ cho phép upload file ảnh, PDF, DOC, DOCX hoặc video!"
-        ),
-        false
-      );
-    }
+    if (file.mimetype.startsWith("image/")) return cb(null, true);
+    if (file.mimetype.startsWith("video/")) return cb(null, true);
+    if (allowedDocs.includes(file.mimetype)) return cb(null, true);
+    if (allowedRaw.includes(file.mimetype)) return cb(null, true);
+
+    return cb(
+      new ApiError(
+        StatusCodes.BAD_REQUEST,
+        "Chỉ cho phép upload ảnh, PDF, DOC, DOCX, ZIP, TXT!"
+      ),
+      false
+    );
   },
 });
 
-module.exports = upload;
+// ----------------- Upload nhiều file -----------------
+const uploadBulkAndSign = (fieldName, maxCount = 10) => (req, res, next) => {
+  upload.array(fieldName, maxCount)(req, res, async (err) => {
+    if (err) return next(err);
+    if (!req.files || req.files.length === 0)
+      return next(new ApiError(StatusCodes.BAD_REQUEST, "Không có file"));
+
+    req.uploadedFiles = req.files.map(file => {
+      const isRaw = getCloudinaryResourceType(file.mimetype) === "raw";
+
+      let signedUrl = file.path;
+      if (isRaw) {
+        signedUrl = signCloudinaryUrl(file.filename);
+      }
+      return {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        public_id: file.public_id,
+        folder: file.folder,
+        format: file.format,
+        url: signedUrl,
+        filename: file.filename
+      };
+    });
+
+    next();
+  });
+};
+
+// ----------------- Upload 1 file -----------------
+const uploadAndSign = (fieldName) => (req, res, next) => {
+  upload.single(fieldName)(req, res, function (err) {
+    if (err) return next(err);
+    if (!req.file)
+      return next(new ApiError(StatusCodes.BAD_REQUEST, "Thiếu file"));
+
+    const isRaw = getCloudinaryResourceType(req.file.mimetype) === "raw";
+
+    let signedUrl = req.file.path;
+    if (isRaw) {
+      signedUrl = signCloudinaryUrl(file.filename);
+    }
+
+    req.uploadedFile = {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      public_id: req.file.public_id,
+      folder: req.file.folder,
+      format: req.file.format,
+      url: signedUrl,
+      filename: req.file.filename
+    };
+
+    next();
+  });
+};
+
+module.exports = {
+  uploadAndSign,
+  uploadBulkAndSign,
+  upload
+};
