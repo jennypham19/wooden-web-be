@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.UUID,
             allowNull: false,
             primaryKey: true,
-            defaultValue: DataTypes.UUIDV5
+            defaultValue: DataTypes.UUIDV4
         },
         // tên máy
         name: {
@@ -28,7 +28,7 @@ module.exports = (sequelize, DataTypes) => {
         // thông số
         specifications: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: true
         },
         // thương hiệu
         brand: {
@@ -67,6 +67,11 @@ module.exports = (sequelize, DataTypes) => {
         status: {
             type: DataTypes.ENUM('operating', 'paused', 'stopped', 'under_maintenance', 'under_repair', 'faulty'),
             allowNull: false,
+        },
+        // ngày sửa chữa
+        repair_date: {
+            type: DataTypes.DATE,
+            allowNull: true
         },
         // ngày bảo dưỡng
         maintenance_date: {

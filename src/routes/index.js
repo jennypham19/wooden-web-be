@@ -10,7 +10,8 @@ const customerRoute = require('../routes/customer.route');
 const orderRoute = require('../routes/order.route');
 const productRoute = require('../routes/product.route');
 const bomRoute = require('../routes/bom.route');
-const designRequestRoute = require('../routes/design-request.route')
+const designRequestRoute = require('../routes/design-request.route');
+const machineRoute = require('../routes/machine.route')
 
 const router = express.Router();
 
@@ -51,6 +52,10 @@ const defaultRoutes = [
   {
     path: '/design-requests',
     route: designRequestRoute
+  },
+  {
+    path: '/machines',
+    route: machineRoute
   }
 ]
 
