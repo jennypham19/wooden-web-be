@@ -6,6 +6,10 @@ module.exports = (sequelize, DataTypes) => {
             ReferenceLink.hasMany(models.DesignRequestReferenceLink, {
                 foreignKey: 'reference_link_id',
                 as: 'referenceLinkRequest'
+            }),
+            ReferenceLink.hasMany(models.OrderReferenceLink,{
+                foreignKey: 'reference_link_id',
+                as: 'referenceLinkOrder'
             })
         }
     }

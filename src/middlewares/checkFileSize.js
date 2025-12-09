@@ -10,8 +10,10 @@ const checkFilesSize = (req, res, next) => {
   }
     const allowedDocs  = [
       'application/pdf',
+      'application/postscript',
       'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
     ];
 
     const allowedRaw = [
@@ -19,7 +21,10 @@ const checkFilesSize = (req, res, next) => {
       "application/x-rar-compressed",
       "text/plain",
       "application/json",
-      "text/csv"
+      "text/csv",
+      "application/xml",
+      "text/xml",
+      "image/svg+xml"
     ];
 
   for (const file of req.files) {

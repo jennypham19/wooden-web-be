@@ -64,7 +64,8 @@ const uploadFiles = catchAsync(async (req, res) => {
         try {
             const files = req.uploadedFiles.map(file => ({
                 url: file.url,
-                name: file.filename
+                name: file.filename,
+                originalname: Buffer.from(file.originalname, "latin1").toString("utf8")   // Sửa lỗi font Multer (latin1 → utf8)
             }));
             const folder = req.body.type || 'wooden' // folder đã lưu
             res.status(StatusCodes.OK).send({

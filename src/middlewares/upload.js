@@ -32,13 +32,14 @@ const storage = new CloudinaryStorage({
       folder = `${folder}/${req.body.type}`;
     }
 
+    const correctName = Buffer.from(file.originalname, "latin1").toString("utf8");
     const ext = path.extname(file.originalname).toLowerCase().replace(".", "");
-
-    const baseName = path.parse(file.originalname).name.replace(/[^a-zA-Z0-9-_]/g, "_");
+    // const baseName = path.parse(file.originalname).name.replace(/[^a-zA-Z0-9-_]/g, "_");
+    const baseName = path.parse(correctName).name;
+    
     const fileHash = crypto.createHash("md5").update(baseName).digest("hex");
 
     const publicId = `${baseName}_${fileHash}`; // ⚠ KHÔNG có .pdf
-
     const resourceType = getCloudinaryResourceType(file.mimetype);
 
     return {
@@ -62,8 +63,10 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowedDocs = [
       'application/pdf',
+      'application/postscript',
       'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
     ];
 
     const allowedRaw = [
@@ -71,7 +74,10 @@ const upload = multer({
       "application/x-rar-compressed",
       "text/plain",
       "application/json",
-      "text/csv"
+      "text/csv",
+      "application/xml",
+      "text/xml",
+      "image/svg+xml"
     ];
 
     if (file.mimetype.startsWith("image/")) return cb(null, true);

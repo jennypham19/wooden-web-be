@@ -6,6 +6,10 @@ module.exports = (sequelize, DataTypes) => {
             InputFile.hasMany(models.DesignRequestInputFile, {
                 foreignKey: 'input_file_id',
                 as: 'inputFilesRequest'
+            }),
+            InputFile.hasMany(models.OrderInputFile, {
+                foreignKey: 'input_file_id',
+                as: 'inputFilesOrder'
             })
         }
     }

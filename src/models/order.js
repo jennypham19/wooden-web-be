@@ -18,6 +18,14 @@ module.exports = (sequelize, DataTypes) => {
             Order.hasMany(models.DesignRequest, {
                 foreignKey: 'order_id',
                 as: 'orderDesignRequests'
+            }),
+            Order.hasMany(models.OrderInputFile, {
+                foreignKey: 'order_id',
+                as: 'orderInputFiles'
+            }),
+            Order.hasMany(models.OrderReferenceLink, {
+                foreignKey: 'order_id',
+                as: 'orderReferenceLinks'
             })
         }
     }

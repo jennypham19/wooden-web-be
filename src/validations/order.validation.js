@@ -31,6 +31,8 @@ const createOrder = {
         }),
         proccess: Joi.string().optional(),
         status: Joi.string().optional(),
+        inputFiles: Joi.array().optional(),
+        referenceLinks: Joi.array().optional(),
         products: Joi.array().optional(),
     })
 }
