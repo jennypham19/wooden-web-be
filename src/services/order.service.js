@@ -1,12 +1,12 @@
 const { StatusCodes } = require('http-status-codes');
-const { Order, Customer, Product, User, BOM, sequelize } = require('../models');
+const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderReferenceLink, InputFile, ReferenceLink } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { Op } = require('sequelize');
 
 const createOrder = async(orderBody) => {
     const transaction = await sequelize.transaction();
     try {
-        const { customerId, codeOrder, name, dateOfReceipt, dateOfPayment, proccess, status, amount, requiredNote, products } = orderBody;
+        const { customerId, codeOrder, name, dateOfReceipt, dateOfPayment, proccess, status, amount, requiredNote, products, inputFiles, referenceLinks } = orderBody;
         const order = await Order.create({
             customer_id: customerId,
             code_order: codeOrder,
@@ -18,16 +18,35 @@ const createOrder = async(orderBody) => {
             amount,
             required_note: requiredNote
         }, { transaction })
-        for(const product of products) {
-            await Product.create({
-                name: product.name,
-                description: product.description,
-                target: product.target,
-                order_id: order.id,
-                manager_id: product.managerId,
-                status: product.status,
-                proccess: product.proccess
-            }, { transaction })
+
+        // Lưu sản phẩm
+        if(products.length > 0 ){
+            for(const product of products) {
+                await Product.create({
+                    name: product.name,
+                    description: product.description,
+                    target: product.target,
+                    order_id: order.id,
+                    manager_id: product.managerId,
+                    status: product.status,
+                    proccess: product.proccess
+                }, { transaction })
+            }
+        }
+
+        // Lưu files dữ liệu
+        if(inputFiles.length > 0){
+            for(const inputFile of inputFiles){
+                const inputFileDB = await InputFile.create({ name: inputFile.name, url: inputFile.url }, { transaction });
+                await OrderInputFile.create({ order_id: order.id, input_file_id: inputFileDB.id }, { transaction })
+            }
+        }
+        // Lưu link tài liệu
+        if(referenceLinks.length > 0){
+            for(const referenceLink of referenceLinks){
+                const referenceLinkDB = await ReferenceLink.create({ url: referenceLink.url }, { transaction });
+                await OrderReferenceLink.create({ order_id: order.id, reference_link_id: referenceLinkDB.id }, { transaction })
+            }
         }
         await transaction.commit();
     } catch (error) {
@@ -117,7 +136,80 @@ const queryOrders = async(queryOptions) => {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
 }
+
+const getDetailOrder = async(id) => {
+    try {
+        const orderDB = await Order.findByPk(id, {
+            include: [
+                {
+                    model: Customer,
+                    as: 'ordersCustomer'
+                },
+                {
+                    model: Product,
+                    as: 'orderProducts',
+                    include: [{ model: User, as: 'productsUser' }]
+                },
+                {
+                    model: OrderInputFile,
+                    as: 'orderInputFiles',
+                    include: [{ model: InputFile, as: 'inputFiles' }]
+                },
+                {
+                    model: OrderReferenceLink,
+                    as: 'orderReferenceLinks',
+                    include: [{ model: ReferenceLink, as: 'referenceLinks' }]
+                }
+            ]
+        });
+        const newOrder = orderDB.toJSON();
+        const order = {
+            id: newOrder.id,
+            name: newOrder.name,
+            customer: {
+                id: newOrder.ordersCustomer.id,
+                name: newOrder.ordersCustomer.name
+            },
+            codeOrder: newOrder.code_order,
+            dateOfReceipt: newOrder.date_of_receipt,
+            dateOfPayment: newOrder.date_of_payment,
+            proccess: newOrder.proccess,
+            status: newOrder.status,
+            amount: newOrder.amount,
+            requiredNote: newOrder.required_note,
+            createdAt: newOrder.createdAt,
+            updatedAt: newOrder.updatedAt,
+            products: (newOrder.orderProducts ?? [])
+                .filter((el) => el.order_id === newOrder.id)
+                .map((product) => {
+                    return {
+                        id: product.id,
+                        name: product.name,
+                        description: product.description,
+                        target: product.target,
+                        proccess: product.proccess,
+                        status: product.status,
+                        manager: {
+                            fullName: product.productsUser.full_name,
+                            role: product.productsUser.role,
+                            phone: product.productsUser.phone
+                        }
+                    }
+                }),
+            inputFiles: (newOrder.orderInputFiles ?? [])
+                .filter((el) => el.order_id === newOrder.id)
+                .map((inputFile) => inputFile.inputFiles),
+            referenceLinks: (newOrder.orderReferenceLinks ?? [])
+                .filter((el) => el.order_id === newOrder.id)
+                .map((referenceLink) => referenceLink.referenceLinks)
+        };
+        return order;
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message);
+    }
+}
 module.exports = {
     createOrder,
-    queryOrders
+    queryOrders,
+    getDetailOrder
 }

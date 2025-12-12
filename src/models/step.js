@@ -1,0 +1,42 @@
+'use strict';
+const { Model } = require('sequelize');
+module.exports = (sequelize, DataTypes) => {
+    class Step extends Model{
+        static associate(models){
+            Step.belongsTo(models.WorkMilestone, {
+                foreignKey: 'work_milestone_id',
+                as: 'stepsWorkMilestone'
+            });
+            Step.hasMany(models.ImageStep, {
+                foreignKey: 'step_id',
+                as: 'stepImageSteps'
+            })
+        }
+    }
+
+    Step.init({
+        id: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            defaultValue: DataTypes.UUIDV4,
+            primaryKey: true
+        },
+        name: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        proccess: {
+            type: DataTypes.ENUM('pending', 'in_progress', 'completed'),
+            allowNull: false,
+            defaultValue: 'pending'
+        },
+        work_milestone_id: {
+            type: DataTypes.UUID,
+            allowNull: false
+        }
+    }, {
+        sequelize,
+        modelName: 'Step'
+    });
+    return Step
+}

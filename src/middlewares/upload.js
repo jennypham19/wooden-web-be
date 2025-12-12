@@ -77,18 +77,28 @@ const upload = multer({
       "text/csv",
       "application/xml",
       "text/xml",
-      "image/svg+xml"
+      "image/svg+xml",
+      ""
     ];
+
+    // Lấy extension để check thêm (cho .xxml)
+    const ext = file.originalname.split(".").pop().toLowerCase();
+
+    //Hỗ trợ file.xxml
+    const allowedExtensions = ["xxml"];
 
     if (file.mimetype.startsWith("image/")) return cb(null, true);
     if (file.mimetype.startsWith("video/")) return cb(null, true);
     if (allowedDocs.includes(file.mimetype)) return cb(null, true);
     if (allowedRaw.includes(file.mimetype)) return cb(null, true);
 
+    // Check extension nếu MIME rỗng hoặc không khớp
+    if(ext && allowedExtensions.includes(ext)) return(null, true)
+
     return cb(
       new ApiError(
         StatusCodes.BAD_REQUEST,
-        "Chỉ cho phép upload ảnh, PDF, DOC, DOCX, ZIP, TXT!"
+        "Chỉ cho phép upload ảnh, video, PDF, DOC, DOCX, ZIP, TXT, XML, XXML!"
       ),
       false
     );

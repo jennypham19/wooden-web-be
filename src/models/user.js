@@ -24,6 +24,14 @@ module.exports = (sequelize, DataTypes) => {
             User.hasMany(models.DesignRequest, {
                 foreignKey: 'curator_id',
                 as: 'curatorDesignRequests'
+            });
+            User.hasMany(models.WorkOrder, {
+                foreignKey: 'manager_id',
+                as: 'managerWorkOrders'
+            });
+            User.hasMany(models.Worker, {
+                foreignKey: 'worker_id',
+                as: 'workers'
             })
         }
     }

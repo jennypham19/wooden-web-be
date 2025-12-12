@@ -24,7 +24,8 @@ const checkFilesSize = (req, res, next) => {
       "text/csv",
       "application/xml",
       "text/xml",
-      "image/svg+xml"
+      "image/svg+xml",
+      ""
     ];
 
   for (const file of req.files) {

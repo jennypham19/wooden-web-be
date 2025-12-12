@@ -14,7 +14,13 @@ const queryOrders = catchAsync(async(req, res) => {
     res.status(StatusCodes.OK).send({ success: true, message: 'Lấy danh sách thành công.', data: orders })
 })
 
+const getDetailOrder = catchAsync(async(req, res) => {
+    const order = await orderService.getDetailOrder(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Lấy chi tiết thông tin đơn hàng thành công.', data: order })
+})
+
 module.exports = {
     createOrder,
-    queryOrders
+    queryOrders,
+    getDetailOrder
 }
