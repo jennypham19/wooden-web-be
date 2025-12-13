@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto')
 const { User, UserMenu, UserAction, Menu, MenuAction } = require('../models');
 const ApiError = require('../utils/ApiError');
-const { Op } = require('sequelize');
+const { Op, where } = require('sequelize');
 
 // Lấy chi tiết user theo id
 const getUserById = async(id) => {
@@ -97,6 +97,55 @@ const queryListAccounts = async(queryOptions) => {
         }
     } catch (error) {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Đã có lỗi khi lấy ra danh sách: ' + error.message);
+    }
+}
+
+// Lấy danh sách người dùng có role = carpenter
+const queryListUser = async(queryOptions) => {
+    try {
+        const { page, limit } = queryOptions;
+        const offset = (page - 1) * limit;
+
+        const { count, rows: carpentersDB} = await User.findAndCountAll({
+            where: { 
+                role: 'carpenter',
+                is_assigned: false
+            },
+            limit,
+            offset,
+            order: [[ 'createdAt', 'DESC']]
+        })
+        const totalPages = Math.ceil(count/limit);
+        const carpenters = carpentersDB.map((account) => {
+            const newAccount = account.toJSON();
+            return {
+                id: newAccount.id,
+                email: newAccount.email,
+                fullName: newAccount.full_name,
+                role: newAccount.role,
+                dob: newAccount.dob,
+                code: newAccount.code,
+                gender: newAccount.gender,
+                phone: newAccount.phone,
+                work: newAccount.work,
+                department: newAccount.department,
+                address: newAccount.address,
+                avatarUrl: newAccount.avatar_url,
+                nameImage: newAccount.name_image,
+                isActive: newAccount.is_active,
+                isReset: newAccount.is_reset,
+                createdAt: newAccount.createdAt,
+                updatedAt: newAccount.updatedAt,
+            }
+        })
+        return {
+            data: carpenters,
+            totalPages,
+            currentPage: page,
+            total: count
+        }
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
 }
 

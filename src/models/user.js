@@ -127,6 +127,11 @@ module.exports = (sequelize, DataTypes) => {
         is_permission: {
             type: DataTypes.BOOLEAN,
             defaultValue: false
+        },
+        // Cột is_assigned: trạng thái khi được phân công
+        is_assigned: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
         }
     }, {
         sequelize,
