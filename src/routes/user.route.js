@@ -4,6 +4,7 @@ const express = require('express');
 const { protect, authorize } = require('../middlewares/auth');
 const userController = require('../controllers/user.controller');
 const userValidation = require('../validations/user.validation');
+const baseValidation = require('../validations/base.validation');
 const validate = require('../middlewares/validate');
 
 const router = express.Router();
@@ -22,7 +23,7 @@ router.get(
     userController.getListAccounts
 )
 
-router.use(protect, authorize('admin'));
+router.use(protect, authorize('admin', 'factory_manager'));
 
 // tạo 
 router.post(
@@ -36,6 +37,13 @@ router.get(
     '/get-list-decentralized-accounts',
     validate(userValidation.getQueryDecentralized),
     userController.getListDecentralizeAccounts
+)
+
+// lấy danh sách thợ mộc
+router.get(
+    '/list-carpenters',
+    validate(baseValidation.queryOptions),
+    userController.getListUserWithRoleCarpenter
 )
 
 

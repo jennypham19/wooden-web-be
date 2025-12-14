@@ -323,5 +323,6 @@ module.exports = {
     queryListDecentralizedAccounts,
     getUserById,
     getDetailUserWithPermission,
-    mapPermissionByTree
+    mapPermissionByTree,
+    queryListUser
 }

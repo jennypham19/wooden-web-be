@@ -28,9 +28,17 @@ const getDetailUserWithPermission = catchAsync(async (req, res) => {
     res.status(StatusCodes.OK).send({ success: true, message: 'Lấy chi tiết bản ghi thành công', data: user })
 })
 
+// Lấy danh sách người dùng có role = carpenter
+const getListUserWithRoleCarpenter = catchAsync(async (req, res) => {
+    const queryOptions = pick(req.query, ["page", "limit"]);
+    const users = await userService.queryListUser(queryOptions);
+    res.status(StatusCodes.OK).send({ success: true, message: "Lấy danh sách thợ mộc thành công. ", data: users})
+})
+
 module.exports = {
     createUser,
     getListAccounts,
     getListDecentralizeAccounts,
-    getDetailUserWithPermission
+    getDetailUserWithPermission,
+    getListUserWithRoleCarpenter
 }
