@@ -10,7 +10,7 @@ router.use(protect);
 // Lấy danh sách sản phẩm theo đơn hàng
 router.get(
     '/get-products-by-order/:id',
-    authorize('technical_design'),
+    authorize('technical_design', 'factory_manager'),
     validate(productValidation.queryProducts),
     productController.queryProductsByOrderId
 )
