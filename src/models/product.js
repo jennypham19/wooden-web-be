@@ -75,6 +75,11 @@ module.exports = (sequelize, DataTypes) => {
         status: {
             type: DataTypes.ENUM('pending', 'in_progress', 'completed'),
             allowNull: false,
+        },
+        // Cột is_created: trạng thái của sản phẩm khi đã được tạo công việc
+        is_created: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
         }
     }, {
         sequelize,
