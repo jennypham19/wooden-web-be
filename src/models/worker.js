@@ -4,7 +4,7 @@ module.exports = (sequelize, DataTypes) => {
     class Worker extends Model {
         static associate (models){
             Worker.belongsTo(models.WorkOrder, {
-                foreignKey: 'work_order_id',
+                foreignKey: 'worker_order_id',
                 as: 'workersWorkOrder'
             });
             Worker.belongsTo(models.User, {
@@ -20,7 +20,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             primaryKey: true
         },
-        work_order_id: {
+        worker_order_id: {
             type: DataTypes.UUID,
             allowNull: false
         },

@@ -1,8 +1,9 @@
 const { StatusCodes } = require('http-status-codes');
-const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderReferenceLink, InputFile, ReferenceLink } = require('../models');
+const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderReferenceLink, InputFile, ReferenceLink, WorkMilestone, Worker, WorkOrder, Step } = require('../models');
 const ApiError = require('../utils/ApiError');
-const { Op } = require('sequelize');
+const { Op, where } = require('sequelize');
 
+/* ------------- Tạo đơn hàng -------------- */
 const createOrder = async(orderBody) => {
     const transaction = await sequelize.transaction();
     try {
@@ -55,6 +56,7 @@ const createOrder = async(orderBody) => {
     }
 }
 
+/* ------------- Lấy danh sách đơn hàng ------------- */
 const queryOrders = async(queryOptions) => {
     try {
         const { page, limit, searchTerm, status } = queryOptions;
@@ -106,6 +108,7 @@ const queryOrders = async(queryOptions) => {
                 requiredNote: newOrder.required_note,
                 createdAt: newOrder.createdAt,
                 updatedAt: newOrder.updatedAt,
+                isCreatedWork: newOrder.is_created_work,
                 products: (newOrder.orderProducts ?? [])
                     .filter((el) => el.order_id === newOrder.id)
                     .map((product) => {
@@ -137,6 +140,7 @@ const queryOrders = async(queryOptions) => {
     }
 }
 
+/* ------------- Lấy chi tiết đơn hàng ------------ */
 const getDetailOrder = async(id) => {
     try {
         const orderDB = await Order.findByPk(id, {
@@ -179,6 +183,7 @@ const getDetailOrder = async(id) => {
             requiredNote: newOrder.required_note,
             createdAt: newOrder.createdAt,
             updatedAt: newOrder.updatedAt,
+            isCreatedWork: newOrder.is_created_work,
             products: (newOrder.orderProducts ?? [])
                 .filter((el) => el.order_id === newOrder.id)
                 .map((product) => {
@@ -189,6 +194,7 @@ const getDetailOrder = async(id) => {
                         target: product.target,
                         proccess: product.proccess,
                         status: product.status,
+                        isCreated: product.is_created,
                         manager: {
                             fullName: product.productsUser.full_name,
                             role: product.productsUser.role,
@@ -208,8 +214,158 @@ const getDetailOrder = async(id) => {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message);
     }
 }
+
+/* ------------- Tạo mới công việc ------------- */
+const saveOrderWork = async(orderWorkBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { orderId, managerId, productId, workMilestone, workers, workMilestones } = orderWorkBody;
+        const workOrder = await WorkOrder.create({ 
+            order_id: orderId,
+            manager_id: managerId,
+            product_id: productId,
+            work_milestone: workMilestone
+        }, { transaction });
+        if(workers.length > 0){
+            for(const worker of workers){
+                await Worker.create({
+                    worker_order_id: workOrder.id,
+                    worker_id: worker.carpenterId
+                }, { transaction })
+                await User.update({ is_assigned: true }, { where: { id: worker.carpenterId }}, { transaction })
+            }
+        }
+        if(workMilestones.length > 0){
+            for(const workMilestone of workMilestones){
+                const workMilestoneDB = await WorkMilestone.create({
+                    work_order_id: workOrder.id,
+                    name: workMilestone.name,
+                    step: workMilestone.step,
+                    target: workMilestone.target
+                }, { transaction });
+
+                if(workMilestone.steps.length > 0){
+                    for(const step of workMilestone.steps){
+                        await Step.create({
+                            name: step.name,
+                            proccess: step.proccess,
+                            work_milestone_id: workMilestoneDB.id
+                        }, { transaction })
+                    }
+                }
+            }
+        }
+        await Product.update({ proccess : 'in_progress_25%', status: 'in_progress', is_created: true }, { where: { id: productId } }, { transaction })
+        await Order.update({ proccess : 'in_progress_25%', status: 'in_progress', is_created_work: true }, { where: { id: orderId } }, { transaction })
+        await transaction.commit();
+    } catch (error) {
+        await transaction.rollback();
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+/* Lấy danh sách đơn hàng đã được tạo mốc công việc + assign chính thợ mộc đó thông qua id ở role thợ mộc */
+const queryOrdersByCarpenterId = async(queryOptions) => {
+    try {
+        const { page, limit, searchTerm, status, id } = queryOptions;
+        const offset = (page - 1) * limit;
+        const whereClause = {};
+        if(status && status !== 'all'){
+            whereClause.status = status;
+        }
+        if(searchTerm){
+            whereClause[Op.or] = [
+                { code_order: { [Op.iLike]: `%${searchTerm}%` }},
+                { name: { [Op.iLike]: `%${searchTerm}%` }},
+            ]
+        }
+        const { count, rows: ordersByCarpenterIdDB } = await Order.findAndCountAll({
+            where: whereClause,
+            include: [
+                {
+                    model: Customer,
+                    as: 'ordersCustomer'
+                },
+                {
+                    model: Product,
+                    as: 'orderProducts',
+                    include: [{ model: User, as: 'productsUser' }]
+                },
+                {
+                    model: WorkOrder,
+                    as: 'orderWorkOrder',
+                    required: true,
+                    include: [
+                        { 
+                            model: Worker,
+                            as: 'workOrderWorkers',
+                            required: true,
+                            where: { worker_id: id }
+                        }
+                    ]
+                }
+            ],
+            limit,
+            offset,
+            order: [[ 'createdAt', 'DESC']],
+            distinct: true
+        });
+        const totalPages = Math.ceil(count/limit);
+        const orders = ordersByCarpenterIdDB.map((order) => {
+            const newOrder = order.toJSON();
+            return {
+                id: newOrder.id,
+                name: newOrder.name,
+                customer: {
+                    id: newOrder.ordersCustomer.id,
+                    name: newOrder.ordersCustomer.name
+                },
+                codeOrder: newOrder.code_order,
+                dateOfReceipt: newOrder.date_of_receipt,
+                dateOfPayment: newOrder.date_of_payment,
+                proccess: newOrder.proccess,
+                status: newOrder.status,
+                amount: newOrder.amount,
+                requiredNote: newOrder.required_note,
+                createdAt: newOrder.createdAt,
+                updatedAt: newOrder.updatedAt,
+                isCreatedWork: newOrder.is_created_work,
+                products: (newOrder.orderProducts ?? [])
+                    .filter((el) => el.order_id === newOrder.id)
+                    .map((product) => {
+                        return {
+                            id: product.id,
+                            name: product.name,
+                            description: product.description,
+                            target: product.target,
+                            process: product.proccess,
+                            status: product.status,
+                            isCreated: product.is_created,
+                            manager: {
+                                fullName: product.productsUser.full_name,
+                                role: product.productsUser.role,
+                                phone: product.productsUser.phone
+                            }
+                        }
+                    })
+                
+            }
+        })
+        return{
+            data: orders,
+            totalPages,
+            currentPage: page,
+            total: count
+        }
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
 module.exports = {
     createOrder,
     queryOrders,
-    getDetailOrder
+    getDetailOrder,
+    saveOrderWork,
+    queryOrdersByCarpenterId,
 }

@@ -52,8 +52,43 @@ const queryOrder = {
     })
 }
 
+const createOrderWork = {
+    body: Joi.object().keys({
+        orderId: Joi.string().required().messages({
+           'string.empty': 'Đơn hàng không được để trống',
+           'any.required': 'Đơn hàng là trường bắt buộc' 
+        }),
+        managerId: Joi.string().required().messages({
+           'string.empty': 'Quản lý không được để trống',
+           'any.required': 'Quản lý là trường bắt buộc' 
+        }),
+        productId: Joi.string().required().messages({
+            'string.empty': 'Sản phẩm không được để trống',
+            'any.required': 'Sản phẩm là trường bắt buộc'
+        }),
+        workMilestone: Joi.string().required().messages({
+            'string.empty': 'Mốc công việc không được để trống',
+            'any.required': 'Mốc công việc là trường bắt buộc'
+        }),
+        workers: Joi.array().required(),
+        workMilestones: Joi.array().required(),
+    })
+}
+
+const queryOrdersByCarpenterId = {
+    query: Joi.object().keys({
+        page: Joi.number().integer().min(1).default(1),
+        limit: Joi.number().integer().min(1).max(100).default(10),
+        searchTerm: Joi.string().optional(), 
+        status: Joi.string().optional(),
+        id: Joi.string().required(), 
+    })
+}
+
 module.exports = {
     createOrder,
     queryOrders,
-    queryOrder
+    queryOrder,
+    createOrderWork,
+    queryOrdersByCarpenterId
 }

@@ -12,12 +12,16 @@ module.exports = (sequelize, DataTypes) => {
                 as: 'workOrderProduct'
             }),
             WorkOrder.hasMany(models.Worker, {
-                foreignKey: 'work_order_id',
+                foreignKey: 'worker_order_id',
                 as: 'workOrderWorkers'
             }),
             WorkOrder.hasMany(models.WorkMilestone, {
                 foreignKey: 'work_order_id',
                 as: 'workOrderWorkMilestones'
+            }),
+            WorkOrder.belongsTo(models.Order, {
+                foreignKey: 'order_id',
+                as: 'workOrder'
             })
         }
     }
@@ -34,6 +38,10 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false
         },
         product_id: {
+            type: DataTypes.UUID,
+            allowNull: false
+        },
+        order_id: {
             type: DataTypes.UUID,
             allowNull: false
         },

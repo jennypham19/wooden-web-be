@@ -26,6 +26,10 @@ module.exports = (sequelize, DataTypes) => {
             Order.hasMany(models.OrderReferenceLink, {
                 foreignKey: 'order_id',
                 as: 'orderReferenceLinks'
+            }),
+            Order.hasOne(models.WorkOrder, {
+                foreignKey: 'order_id',
+                as: 'orderWorkOrder'
             })
         }
     }
@@ -89,6 +93,11 @@ module.exports = (sequelize, DataTypes) => {
         required_note: {
             type: DataTypes.TEXT,
             allowNull: false
+        },
+        // Cột is_created_work: trạng thái của đơn hàng khi đã được tạo công việc
+        is_created_work: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false // false là chưa tạo, true là đã tạo để phục vụ cho bên thợ mộc
         }
     }, {
         sequelize,

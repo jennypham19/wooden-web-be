@@ -25,10 +25,17 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false
         },
+        // quá trình
         proccess: {
             type: DataTypes.ENUM('pending', 'in_progress', 'completed'),
             allowNull: false,
             defaultValue: 'pending'
+        },
+        // tiến độ
+        progress:{
+            type: DataTypes.ENUM('0%', '20%', '40%', '60%', '80%', '100%'),
+            allowNull: false,
+            defaultValue: '0%'
         },
         work_milestone_id: {
             type: DataTypes.UUID,
