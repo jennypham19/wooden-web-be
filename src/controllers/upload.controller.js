@@ -18,6 +18,7 @@ const uploadImageSingle = catchAsync(async (req, res) => {
             const imageUrl = req.file.path; // link ảnh Cloudinary
             const folder = req.body.type || 'wooden' // folder đã lưu
             const fileName = req.file.filename; // lấy tên ảnh
+            const originalname = req.file.originalname; 
             // Sau khi upload thành công, multer-storage-cloudinary sẽ trả về link tại req.file.path
             res.status(StatusCodes.OK).send({
                 success: true,
@@ -25,7 +26,8 @@ const uploadImageSingle = catchAsync(async (req, res) => {
                 data: {
                     file: {
                         imageUrl,
-                        fileName
+                        fileName,
+                        originalname
                     },
                     folder,
                 }
@@ -44,7 +46,8 @@ const uploadEmployeeImageMultiple = catchAsync(async (req, res) => {
             }
             const files = req.files.map(file => ({
                 url: file.path,
-                name: file.filename
+                name: file.filename,
+                originalname: Buffer.from(file.originalname, "latin1").toString("utf8")
             }));
             const folder = req.body.type || 'wooden' // folder đã lưu
             res.status(StatusCodes.OK).send({
@@ -56,6 +59,8 @@ const uploadEmployeeImageMultiple = catchAsync(async (req, res) => {
                 }
             })
         } catch (error) {
+            console.log("error: ", error);
+            
             throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Đã có lỗi xảy ra ' + error.message);
         }
 });

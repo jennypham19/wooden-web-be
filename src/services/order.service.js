@@ -1,7 +1,7 @@
 const { StatusCodes } = require('http-status-codes');
-const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderReferenceLink, InputFile, ReferenceLink, WorkMilestone, Worker, WorkOrder, Step } = require('../models');
+const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderReferenceLink, InputFile, ReferenceLink, WorkMilestone, Worker, WorkOrder, Step, ImageStep } = require('../models');
 const ApiError = require('../utils/ApiError');
-const { Op, where } = require('sequelize');
+const { Op, where, STRING } = require('sequelize');
 
 /* ------------- Tạo đơn hàng -------------- */
 const createOrder = async(orderBody) => {
@@ -123,7 +123,9 @@ const queryOrders = async(queryOptions) => {
                                 fullName: product.productsUser.full_name,
                                 role: product.productsUser.role,
                                 phone: product.productsUser.phone
-                            }
+                            },
+                            nameImage: product.name_image !== null ? product.name_image : null,
+                            urlImage: product.url_image !== null ? product.url_image : null,
                         }
                     })
                 
@@ -199,7 +201,9 @@ const getDetailOrder = async(id) => {
                             fullName: product.productsUser.full_name,
                             role: product.productsUser.role,
                             phone: product.productsUser.phone
-                        }
+                        },
+                        nameImage: product.name_image !== null ? product.name_image : null,
+                        urlImage: product.url_image !== null ? product.url_image : null,
                     }
                 }),
             inputFiles: (newOrder.orderInputFiles ?? [])
@@ -345,7 +349,9 @@ const queryOrdersByCarpenterId = async(queryOptions) => {
                                 fullName: product.productsUser.full_name,
                                 role: product.productsUser.role,
                                 phone: product.productsUser.phone
-                            }
+                            },
+                            nameImage: product.name_image !== null ? product.name_image : null,
+                            urlImage: product.url_image !== null ? product.url_image : null,
                         }
                     })
                 
@@ -362,10 +368,81 @@ const queryOrdersByCarpenterId = async(queryOptions) => {
     }
 }
 
+/* Update tiến độ và trạng thái của step, đồng thời lưu ảnh của từng step */
+const updateStep = async(id, stepBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { proccess, progress, images } = stepBody;
+        const stepDB = await Step.findByPk(id, { transaction });
+        if(!stepDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi này.")
+        }
+        stepDB.proccess = proccess
+        stepDB.progress = progress
+        await stepDB.save({ transaction });
+        if(images.length > 0){
+            for(const image of images){
+                await ImageStep.create({
+                    name: image.name,
+                    url: image.url,
+                    step_id: id
+                }, { transaction })
+            }
+        }
+        await transaction.commit();
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        await transaction.rollback();
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+// Thêm mới step
+const createStep = async(stepBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { workMilestoneId, name, proccess, progress } = stepBody;
+        const workMilestoneDB = await WorkMilestone.findByPk(workMilestoneId, { transaction });
+        if(!workMilestoneDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi này");
+        }
+        workMilestoneDB.step = workMilestoneDB.step + 1;
+        await workMilestoneDB.save({ transaction });
+
+        await Step.create({
+            name, proccess, progress, work_milestone_id: workMilestoneDB.id
+        }, { transaction })
+
+        await transaction.commit()
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        await transaction.rollback();
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+/* Update tiến độ đơn hàng khi xong hết tất cả các sản phẩm */
+const updateProccessOrder = async(id, body) => {
+    try {
+        const { proccess } = body;
+        const orderDB = await Order.findByPk(id);
+        if(!orderDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi nào.")
+        }
+        orderDB.proccess = proccess
+        await orderDB.save();
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
 module.exports = {
     createOrder,
     queryOrders,
     getDetailOrder,
     saveOrderWork,
     queryOrdersByCarpenterId,
+    updateStep,
+    createStep,
+    updateProccessOrder
 }

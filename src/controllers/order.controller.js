@@ -35,10 +35,30 @@ const queryOrdersByCarpenterId = catchAsync(async(req, res) => {
     res.status(StatusCodes.OK).send({ success: true, message: 'Lấy danh sách thành công. ', data: ordersByCarpenterId })
 })
 
+/* Update tiến độ và trạng thái của step, đồng thời lưu ảnh của từng step */
+const updateStep = catchAsync(async(req, res) => {
+    await orderService.updateStep(req.params.id, req.body);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Cập nhật tiến độ thành công. '})
+})
+
+/* Thêm mới step */
+const createAddStep = catchAsync(async(req, res) => {
+    await orderService.createStep(req.body);
+    res.status(StatusCodes.CREATED).send({ success: true, message: 'Thêm mới bản ghi thành công. '})
+})
+
+const updateProccessOrder = catchAsync(async(req, res) => {
+    await orderService.updateProccessOrder(req.params.id, req.body);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Cập nhật bản ghi thành công. '})
+})
+
 module.exports = {
     createOrder,
     queryOrders,
     getDetailOrder,
     saveOrderWork,
     queryOrdersByCarpenterId,
+    updateStep,
+    createAddStep,
+    updateProccessOrder
 }

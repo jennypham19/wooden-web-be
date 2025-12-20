@@ -80,6 +80,14 @@ module.exports = (sequelize, DataTypes) => {
         is_created: {
             type: DataTypes.BOOLEAN,
             defaultValue: false
+        },
+        name_image: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+        url_image: {
+            type: DataTypes.STRING,
+            allowNull: true,
         }
     }, {
         sequelize,

@@ -24,8 +24,15 @@ const getDetailWorkOrderByProduct = catchAsync(async(req, res) => {
     res.status(StatusCodes.OK).send({ success: true, message: "Lấy chi tiết bản ghi thành công. ", data: workOrderByProduct })
 })
 
+/* Update hình ảnh và trạng thái sản phẩm */
+const updateImageAndStatusProduct = catchAsync(async(req, res) => {
+    await productService.updateImageAndStatusProduct(req.params.id, req.body);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Cập nhật bản ghi thành công.'})
+})
+
 module.exports = {
     queryProductsByOrderId,
     queryProductsByOrderIdAndStatus,
-    getDetailWorkOrderByProduct
+    getDetailWorkOrderByProduct,
+    updateImageAndStatusProduct
 }

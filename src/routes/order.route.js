@@ -34,4 +34,24 @@ router.get(
     orderController.queryOrdersByCarpenterId
 )
 
+/* Update tiến độ và trạng thái của step, đồng thời lưu ảnh của từng step */
+router.put(
+    '/step-updated/:id',
+    validate(orderValidation.updateStep),
+    orderController.updateStep
+)
+
+/* Thêm mới step */
+router.post(
+    '/step-created',
+    validate(orderValidation.createAddStep),
+    orderController.createAddStep
+)
+
+router.patch(
+    '/proccess-order-updated/:id',
+    validate(orderValidation.updateProccessOrder),
+    orderController.updateProccessOrder
+)
+
 module.exports = router;

@@ -1,5 +1,5 @@
 const { StatusCodes } = require('http-status-codes');
-const { Product, Order, User, WorkMilestone, Worker, WorkOrder, Step } = require('../models');
+const { Product, Order, User, WorkMilestone, Worker, WorkOrder, Step, ImageStep, sequelize } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { Op } = require('sequelize');
 
@@ -30,7 +30,9 @@ const queryProductsByOrderId = async(orderId) => {
                 },
                 isCreated: newProduct.is_created,
                 createdAt: newProduct.createdAt,
-                updatedAt: newProduct.updatedAt
+                updatedAt: newProduct.updatedAt,
+                nameImage: newProduct.name_image !== null ? newProduct.name_image : null,
+                urlImage: newProduct.url_image !== null ? newProduct.url_image : null,
             }
         });
         return products;
@@ -67,7 +69,9 @@ const queryProductsByOrderIdAndStatus = async(orderId) => {
                 },
                 isCreated: newProduct.is_created,
                 createdAt: newProduct.createdAt,
-                updatedAt: newProduct.updatedAt
+                updatedAt: newProduct.updatedAt,
+                nameImage: newProduct.name_image !== null ? newProduct.name_image : null,
+                urlImage: newProduct.url_image !== null ? newProduct.url_image : null,
             }
         });
         return products;
@@ -95,7 +99,13 @@ const getDetailWorkOrderByProduct = async(productId) => {
                 {
                     model: WorkMilestone,
                     as: 'workOrderWorkMilestones',
-                    include: [{ model: Step, as: 'workMilestoneSteps' }]
+                    include: [
+                        { 
+                            model: Step, 
+                            as: 'workMilestoneSteps',
+                            include: [{ model: ImageStep, as: 'stepImageSteps' }] 
+                        }
+                    ]
                 }
             ],
             order: [
@@ -135,7 +145,18 @@ const getDetailWorkOrderByProduct = async(productId) => {
                         target: workMilestone.target,
                         createdAt: workMilestone.createdAt,
                         updatedAt: workMilestone.updatedAt,
-                        steps: workMilestone.workMilestoneSteps
+                        steps: (workMilestone.workMilestoneSteps ?? [])
+                            .map((step) => {
+                                return {
+                                    id: step.id,
+                                    name: step.name,
+                                    proccess: step.proccess,
+                                    progress: step.progress,
+                                    createdAt: step.createdAt,
+                                    updatedAt: step.updatedAt,
+                                    images: step.stepImageSteps
+                                }
+                            })
                     }
                 }),
         };
@@ -145,8 +166,35 @@ const getDetailWorkOrderByProduct = async(productId) => {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message);
     }
 }
+
+{/* Update hình ảnh và trạng thái sản phẩm */}
+const updateImageAndStatusProduct = async(id, productBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { status, nameImage, urlImage } = productBody;
+        const productDB = await Product.findByPk(id, { transaction });
+        if(!productDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi này.")
+        }
+        productDB.status = status;
+        productDB.name_image = nameImage;
+        productDB.url_image = urlImage;
+        await productDB.save({ transaction });
+        
+        const orderDB = await Order.findOne({
+            where: { id: productDB.order_id }
+        }, { transaction });
+        orderDB.proccess = 'in_progress_50%'
+        await orderDB.save({ transaction })
+        await transaction.commit()
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
 module.exports = {
     queryProductsByOrderId,
     queryProductsByOrderIdAndStatus,
-    getDetailWorkOrderByProduct
+    getDetailWorkOrderByProduct,
+    updateImageAndStatusProduct
 }

@@ -85,10 +85,52 @@ const queryOrdersByCarpenterId = {
     })
 }
 
+const updateStep = {
+    params: Joi.object().keys({
+        id: Joi.string().required()
+    }),
+    body: Joi.object().keys({
+        proccess: Joi.string().required().messages({
+           'string.empty': 'Trạng thái không được để trống',
+           'any.required': 'Trạng thái là trường bắt buộc' 
+        }),
+        progress: Joi.string().required().messages({
+           'string.empty': 'Tiến độ không được để trống',
+           'any.required': 'Tiến độ là trường bắt buộc' 
+        }),
+        images: Joi.array().required()
+    })
+}
+
+// Thêm mới steps
+const createAddStep = {
+    body: Joi.object().keys({
+        workMilestoneId: Joi.string().required(),
+        name: Joi.string().required().messages({
+           'string.empty': 'Tên không được để trống',
+           'any.required': 'Tên là trường bắt buộc'
+        }),
+        proccess: Joi.string().required(),
+        progress: Joi.string().required(),
+    })
+}
+
+const updateProccessOrder = {
+    params: Joi.object().keys({
+        id: Joi.string().required()
+    }),
+    body: Joi.object().keys({
+        proccess: Joi.string().required()
+    })
+}
+
 module.exports = {
     createOrder,
     queryOrders,
     queryOrder,
     createOrderWork,
-    queryOrdersByCarpenterId
+    queryOrdersByCarpenterId,
+    updateStep,
+    createAddStep,
+    updateProccessOrder
 }

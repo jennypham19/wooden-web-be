@@ -31,4 +31,11 @@ router.get(
     productController.getDetailWorkOrderByProduct
 )
 
+/* Update hình ảnh và trạng thái sản phẩm */
+router.put(
+    '/image-and-status-product-updated/:id',
+    validate(productValidation.updateImageAndStatusProduct),
+    productController.updateImageAndStatusProduct
+)
+
 module.exports = router;
