@@ -33,13 +33,15 @@ const storage = new CloudinaryStorage({
     }
 
     const correctName = Buffer.from(file.originalname, "latin1").toString("utf8");
+    
     const ext = path.extname(file.originalname).toLowerCase().replace(".", "");
     // const baseName = path.parse(file.originalname).name.replace(/[^a-zA-Z0-9-_]/g, "_");
     const baseName = path.parse(correctName).name;
     
     const fileHash = crypto.createHash("md5").update(baseName).digest("hex");
 
-    const publicId = `${baseName}_${fileHash}`; // ⚠ KHÔNG có .pdf
+    // const publicId = `${baseName}_${fileHash}`; // ⚠ KHÔNG có .pdf
+    const publicId = baseName; // ⚠ KHÔNG có .pdf
     const resourceType = getCloudinaryResourceType(file.mimetype);
 
     return {
@@ -78,7 +80,6 @@ const upload = multer({
       "application/xml",
       "text/xml",
       "image/svg+xml",
-      ""
     ];
 
     // Lấy extension để check thêm (cho .xxml)
@@ -93,7 +94,9 @@ const upload = multer({
     if (allowedRaw.includes(file.mimetype)) return cb(null, true);
 
     // Check extension nếu MIME rỗng hoặc không khớp
-    if(ext && allowedExtensions.includes(ext)) return(null, true)
+    if (ext && allowedExtensions.includes(ext)) {
+      return cb(null, true);
+    }
 
     return cb(
       new ApiError(
@@ -146,7 +149,7 @@ const uploadAndSign = (fieldName) => (req, res, next) => {
 
     let signedUrl = req.file.path;
     if (isRaw) {
-      signedUrl = signCloudinaryUrl(file.filename);
+      signedUrl = signCloudinaryUrl(req.file.filename);
     }
 
     req.uploadedFile = {

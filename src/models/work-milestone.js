@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
             WorkMilestone.hasMany(models.Step, {
                 foreignKey: 'work_milestone_id',
                 as: 'workMilestoneSteps'
+            }),
+            WorkMilestone.hasOne(models.MilestoneChangeLog, {
+                foreignKey: 'work_milestone_id',
+                as: 'workMilestoneChangeLog'
             })
         }
     }
@@ -36,6 +40,27 @@ module.exports = (sequelize, DataTypes) => {
         target: {
             type: DataTypes.TEXT,
             allowNull: false
+        },
+        evaluated_status: {
+            type: DataTypes.ENUM('pending', 'rework', 'approved', 'overdue'),
+            allowNull: false,
+            defaultValue: 'pending'
+        },
+        evaluation_description: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+        rework_reason: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+        rework_deadline: {
+            type: DataTypes.DATE,
+            allowNull: true
+        },
+        rework_started_at: {
+            type: DataTypes.DATE,
+            allowNull: true
         }
     }, {
         sequelize,

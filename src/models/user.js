@@ -32,6 +32,22 @@ module.exports = (sequelize, DataTypes) => {
             User.hasMany(models.Worker, {
                 foreignKey: 'worker_id',
                 as: 'workers'
+            });
+            User.hasOne(models.Notification, {
+                foreignKey: 'user_id',
+                as: 'userNotification'
+            });
+            User.hasOne(models.OrderChangeLog, {
+                foreignKey: 'changed_by',
+                as: 'userOrderChangeLog'
+            });
+            User.hasMany(models.Order, {
+                foreignKey: 'created_by',
+                as: 'createdByOrder'
+            });
+            User.hasOne(models.MilestoneChangeLog, {
+                foreignKey: 'changed_by',
+                as: 'userMilestoneChangeLog'
             })
         }
     }

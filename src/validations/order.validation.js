@@ -34,6 +34,7 @@ const createOrder = {
         inputFiles: Joi.array().optional(),
         referenceLinks: Joi.array().optional(),
         products: Joi.array().optional(),
+        createdBy: Joi.string().required()
     })
 }
 
@@ -42,7 +43,8 @@ const queryOrders = {
         page: Joi.number().integer().min(1).default(1),
         limit: Joi.number().integer().min(1).max(100).default(10),
         searchTerm: Joi.string().optional(), 
-        status: Joi.string().optional() 
+        status: Joi.string().optional(),
+        id: Joi.string().optional()
     })
 }
 
@@ -124,6 +126,27 @@ const updateProccessOrder = {
     })
 }
 
+// update order
+const updateOrder = {
+    params: Joi.object().keys({
+        id: Joi.string().required()
+    }),
+    body: Joi.object().keys({
+        dateOfPayment: Joi.string().required(),
+        reason: Joi.string().required(),
+        manager: Joi.object().required()
+    })
+}
+
+const queryOrdersWithProccess = {
+    query: Joi.object().keys({
+        page: Joi.number().integer().min(1).default(1),
+        limit: Joi.number().integer().min(1).max(100).default(10),
+        isEvaluated: Joi.string().optional(),
+        searchTerm: Joi.string().optional(),
+    })
+}
+
 module.exports = {
     createOrder,
     queryOrders,
@@ -132,5 +155,7 @@ module.exports = {
     queryOrdersByCarpenterId,
     updateStep,
     createAddStep,
-    updateProccessOrder
+    updateProccessOrder,
+    updateOrder,
+    queryOrdersWithProccess
 }

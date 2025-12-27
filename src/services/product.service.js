@@ -125,6 +125,7 @@ const getDetailWorkOrderByProduct = async(productId) => {
                 fullName: newWorkOrder.workOrdersManager.full_name,
                 avatarUrl: newWorkOrder.workOrdersManager.avatar_url
             },
+            evaluatedStatus: newWorkOrder.evaluated_status,
             createdAt: newWorkOrder.createdAt,
             updatedAt: newWorkOrder.updatedAt,
             workers: (newWorkOrder.workOrderWorkers ?? [])
@@ -145,6 +146,7 @@ const getDetailWorkOrderByProduct = async(productId) => {
                         target: workMilestone.target,
                         createdAt: workMilestone.createdAt,
                         updatedAt: workMilestone.updatedAt,
+                        evaluatedStatus: workMilestone.evaluated_status,
                         steps: (workMilestone.workMilestoneSteps ?? [])
                             .map((step) => {
                                 return {
@@ -192,9 +194,29 @@ const updateImageAndStatusProduct = async(id, productBody) => {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
 }
+
+{/* Send request milestone */}
+const sendRequestMilestone = async(id, requestBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { evaluatedStatus, reworkReason, reworkStartedAt, reworkDeadline, changedBy, changedRole, carpenters } = requestBody;
+        const milestoneDB = await WorkMilestone.findByPk(id, { transaction });
+        if(!milestoneDB) {
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi nào");
+        }
+        console.log("milestoneDB: ", milestoneDB);
+        
+        await transaction.commit()
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        await transaction.rollback();
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
 module.exports = {
     queryProductsByOrderId,
     queryProductsByOrderIdAndStatus,
     getDetailWorkOrderByProduct,
-    updateImageAndStatusProduct
+    updateImageAndStatusProduct,
+    sendRequestMilestone
 }

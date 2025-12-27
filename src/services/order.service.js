@@ -1,13 +1,14 @@
 const { StatusCodes } = require('http-status-codes');
-const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderReferenceLink, InputFile, ReferenceLink, WorkMilestone, Worker, WorkOrder, Step, ImageStep } = require('../models');
+const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderReferenceLink, InputFile, ReferenceLink, WorkMilestone, Worker, WorkOrder, Step, ImageStep, OrderChangeLog, Notification } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { Op, where, STRING } = require('sequelize');
+const { FormatDate } = require('../utils/DateTime');
 
 /* ------------- Tạo đơn hàng -------------- */
 const createOrder = async(orderBody) => {
     const transaction = await sequelize.transaction();
     try {
-        const { customerId, codeOrder, name, dateOfReceipt, dateOfPayment, proccess, status, amount, requiredNote, products, inputFiles, referenceLinks } = orderBody;
+        const { customerId, codeOrder, name, dateOfReceipt, dateOfPayment, proccess, status, amount, requiredNote, products, inputFiles, referenceLinks, createdBy } = orderBody;
         const order = await Order.create({
             customer_id: customerId,
             code_order: codeOrder,
@@ -17,7 +18,8 @@ const createOrder = async(orderBody) => {
             proccess,
             status,
             amount,
-            required_note: requiredNote
+            required_note: requiredNote,
+            created_by: createdBy
         }, { transaction })
 
         // Lưu sản phẩm
@@ -82,6 +84,10 @@ const queryOrders = async(queryOptions) => {
                     model: Product,
                     as: 'orderProducts',
                     include: [{ model: User, as: 'productsUser' }]
+                },
+                {
+                    model: User,
+                    as: 'orderCreatedBy'
                 }
             ],
             limit,
@@ -109,6 +115,8 @@ const queryOrders = async(queryOptions) => {
                 createdAt: newOrder.createdAt,
                 updatedAt: newOrder.updatedAt,
                 isCreatedWork: newOrder.is_created_work,
+                createdBy: newOrder.created_by,
+                reason: newOrder.reason,
                 products: (newOrder.orderProducts ?? [])
                     .filter((el) => el.order_id === newOrder.id)
                     .map((product) => {
@@ -186,6 +194,8 @@ const getDetailOrder = async(id) => {
             createdAt: newOrder.createdAt,
             updatedAt: newOrder.updatedAt,
             isCreatedWork: newOrder.is_created_work,
+            createdBy: newOrder.created_by,
+            reason: newOrder.reason,
             products: (newOrder.orderProducts ?? [])
                 .filter((el) => el.order_id === newOrder.id)
                 .map((product) => {
@@ -334,6 +344,8 @@ const queryOrdersByCarpenterId = async(queryOptions) => {
                 createdAt: newOrder.createdAt,
                 updatedAt: newOrder.updatedAt,
                 isCreatedWork: newOrder.is_created_work,
+                createdBy: newOrder.created_by,
+                reason: newOrder.reason,
                 products: (newOrder.orderProducts ?? [])
                     .filter((el) => el.order_id === newOrder.id)
                     .map((product) => {
@@ -432,10 +444,344 @@ const updateProccessOrder = async(id, body) => {
         orderDB.proccess = proccess
         await orderDB.save();
     } catch (error) {
+        if(error instanceof ApiError) throw error;
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
 }
 
+/* Update order */
+const updateOrder = async(id, body) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { dateOfPayment, reason, manager } = body;
+        const orderDB = await Order.findByPk(id, { transaction });
+        if(!orderDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi nào.")
+        }
+        const oldDate = orderDB.date_of_payment;
+        // 1. Update order
+        // await order.update({
+        //     return_date: newDate,
+        // });
+        orderDB.date_of_payment = dateOfPayment;
+        orderDB.reason = reason;
+        await orderDB.save({ transaction });
+
+        // 2. Save log
+        await OrderChangeLog.create({
+            order_id: orderDB.id,
+            field_name: "date_of_payment",
+            old_value: oldDate,
+            new_value: dateOfPayment,
+            changed_by: manager.id,
+            changed_role: manager.role
+        }, { transaction })
+
+        // 3. Notify sale (Nếu không phải sale tự đổi)
+        if(manager.role !== 'employee'){
+            await Notification.create({
+                user_id: orderDB.created_by,
+                type: 'ORDER_DATE_OF_PAYMENT_CHANGED',
+                title: `Đơn ${orderDB.code_order}`,
+                content: `Ngày trả hàng được thay đổi từ ${FormatDate(orderDB.date_of_payment)} → ${FormatDate(dateOfPayment)}`
+            }, { transaction })
+        }
+        await transaction.commit()
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        await transaction.rollback();
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+/* Lấy danh sách đơn hàng có tiến độ là 75% để đánh giá */
+const queryOrdersWithProccess = async(queryOptions) => {
+    try {
+        const { page, limit, searchTerm, isEvaluated } = queryOptions;
+        const offset = (page - 1) * limit;
+        const whereClause = { proccess: 'in_progress_75%' };
+        if(isEvaluated && isEvaluated !== 'all' && isEvaluated !== undefined && isEvaluated !== null){
+            whereClause.is_evaluated = isEvaluated;
+        }
+        if(searchTerm){
+            whereClause[Op.or] = [
+                { code_order: { [Op.iLike]: `%${searchTerm}%` }},
+                { name: { [Op.iLike]: `%${searchTerm}%` }},
+            ]
+        }
+        const { count, rows: ordersDB } = await Order.findAndCountAll({
+            where: whereClause,
+            include: [
+                {
+                    model: Customer,
+                    as: 'ordersCustomer'
+                },
+                {
+                    model: Product,
+                    as: 'orderProducts',
+                    include: [{ model: User, as: 'productsUser' }]
+                },
+                {
+                    model: User,
+                    as: 'orderCreatedBy'
+                }
+            ],
+            limit,
+            offset,
+            order: [[ 'createdAt', 'DESC']],
+            distinct: true
+        });
+        const totalPages = Math.ceil(count/limit);
+        const orders = ordersDB.map((order) => {
+            const newOrder = order.toJSON();
+            return {
+                id: newOrder.id,
+                name: newOrder.name,
+                customer: {
+                    id: newOrder.ordersCustomer.id,
+                    name: newOrder.ordersCustomer.name
+                },
+                codeOrder: newOrder.code_order,
+                dateOfReceipt: newOrder.date_of_receipt,
+                dateOfPayment: newOrder.date_of_payment,
+                proccess: newOrder.proccess,
+                status: newOrder.status,
+                amount: newOrder.amount,
+                requiredNote: newOrder.required_note,
+                createdAt: newOrder.createdAt,
+                updatedAt: newOrder.updatedAt,
+                isCreatedWork: newOrder.is_created_work,
+                createdBy: newOrder.created_by,
+                reason: newOrder.reason,
+                products: (newOrder.orderProducts ?? [])
+                    .filter((el) => el.order_id === newOrder.id)
+                    .map((product) => {
+                        return {
+                            id: product.id,
+                            name: product.name,
+                            description: product.description,
+                            target: product.target,
+                            process: product.proccess,
+                            status: product.status,
+                            manager: {
+                                fullName: product.productsUser.full_name,
+                                role: product.productsUser.role,
+                                phone: product.productsUser.phone
+                            },
+                            nameImage: product.name_image !== null ? product.name_image : null,
+                            urlImage: product.url_image !== null ? product.url_image : null,
+                        }
+                    })
+                
+            }
+        })
+        return{
+            data: orders,
+            totalPages,
+            currentPage: page,
+            total: count
+        }
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+/* Lấy danh sách đơn hàng theo id của người quản lý */
+const queryOrdersByIdManager = async(queryOptions) => {
+    try {
+        const { page, limit, searchTerm, status, id } = queryOptions;
+        const offset = (page - 1) * limit;
+        const whereClause = {};
+        if(status && status !== 'all'){
+            whereClause.status = status;
+        }
+        if(searchTerm){
+            whereClause[Op.or] = [
+                { code_order: { [Op.iLike]: `%${searchTerm}%` }},
+                { name: { [Op.iLike]: `%${searchTerm}%` }},
+            ]
+        }
+        const { count, rows: ordersDB } = await Order.findAndCountAll({
+            where: whereClause,
+            include: [
+                {
+                    model: Customer,
+                    as: 'ordersCustomer'
+                },
+                {
+                    model: Product,
+                    as: 'orderProducts',
+                    where: { manager_id: id },
+                    include: [{ model: User, as: 'productsUser' }]
+                },
+                {
+                    model: User,
+                    as: 'orderCreatedBy'
+                }
+            ],
+            limit,
+            offset,
+            order: [[ 'createdAt', 'DESC']],
+            distinct: true
+        });
+        const totalPages = Math.ceil(count/limit);
+        const orders = ordersDB.map((order) => {
+            const newOrder = order.toJSON();
+            return {
+                id: newOrder.id,
+                name: newOrder.name,
+                customer: {
+                    id: newOrder.ordersCustomer.id,
+                    name: newOrder.ordersCustomer.name
+                },
+                codeOrder: newOrder.code_order,
+                dateOfReceipt: newOrder.date_of_receipt,
+                dateOfPayment: newOrder.date_of_payment,
+                proccess: newOrder.proccess,
+                status: newOrder.status,
+                amount: newOrder.amount,
+                requiredNote: newOrder.required_note,
+                createdAt: newOrder.createdAt,
+                updatedAt: newOrder.updatedAt,
+                isCreatedWork: newOrder.is_created_work,
+                createdBy: newOrder.created_by,
+                reason: newOrder.reason,
+                products: (newOrder.orderProducts ?? [])
+                    .filter((el) => el.order_id === newOrder.id)
+                    .map((product) => {
+                        return {
+                            id: product.id,
+                            name: product.name,
+                            description: product.description,
+                            target: product.target,
+                            process: product.proccess,
+                            status: product.status,
+                            manager: {
+                                fullName: product.productsUser.full_name,
+                                role: product.productsUser.role,
+                                phone: product.productsUser.phone
+                            },
+                            nameImage: product.name_image !== null ? product.name_image : null,
+                            urlImage: product.url_image !== null ? product.url_image : null,
+                        }
+                    })
+                
+            }
+        })
+        return{
+            data: orders,
+            totalPages,
+            currentPage: page,
+            total: count
+        }
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+/* Lấy danh sách đơn hàng có công việc được tạo bởi id quản lý */
+const queryOrdersWithWorkByIdManager = async(queryOptions) => {
+    try {
+        const { page, limit, searchTerm, status, id } = queryOptions;
+        const offset = (page - 1) * limit;
+        const whereClause = {};
+        const whereWork = {};
+        if(searchTerm){
+            whereClause[Op.or] = [
+                { code_order: { [Op.iLike]: `%${searchTerm}%` }},
+                { name: { [Op.iLike]: `%${searchTerm}%` }},
+            ]
+        }
+        if(status && status !== 'all'){
+            whereWork.evaluated_status = status;
+        }        
+        const { count, rows: ordersDB } = await Order.findAndCountAll({
+            where: whereClause,
+            subQuery: false,
+            include: [
+                {
+                    model: Customer,
+                    as: 'ordersCustomer'
+                },
+                {
+                    model: Product,
+                    as: 'orderProducts',
+                    where: { manager_id: id },
+                    required: true,
+                    include: [
+                        { model: User, as: 'productsUser' },
+                        { 
+                            model: WorkOrder, 
+                            as: 'productWorkOrder', 
+                            where: whereWork, 
+                            required: status && status !== 'all'
+                        }
+                    ]
+                },
+                {
+                    model: User,
+                    as: 'orderCreatedBy'
+                }
+            ],
+            limit,
+            offset,
+            order: [[ 'createdAt', 'DESC']],
+            distinct: true
+        });
+        const totalPages = Math.ceil(count/limit);
+        const orders = ordersDB.map((order) => {
+            const newOrder = order.toJSON();
+            return {
+                id: newOrder.id,
+                name: newOrder.name,
+                customer: {
+                    id: newOrder.ordersCustomer.id,
+                    name: newOrder.ordersCustomer.name
+                },
+                codeOrder: newOrder.code_order,
+                dateOfReceipt: newOrder.date_of_receipt,
+                dateOfPayment: newOrder.date_of_payment,
+                proccess: newOrder.proccess,
+                status: newOrder.status,
+                amount: newOrder.amount,
+                requiredNote: newOrder.required_note,
+                createdAt: newOrder.createdAt,
+                updatedAt: newOrder.updatedAt,
+                isCreatedWork: newOrder.is_created_work,
+                createdBy: newOrder.created_by,
+                reason: newOrder.reason,
+                products: (newOrder.orderProducts ?? [])
+                    .filter((el) => el.order_id === newOrder.id)
+                    .map((product) => {
+                        return {
+                            id: product.id,
+                            name: product.name,
+                            description: product.description,
+                            target: product.target,
+                            process: product.proccess,
+                            status: product.status,
+                            manager: {
+                                fullName: product.productsUser.full_name,
+                                role: product.productsUser.role,
+                                phone: product.productsUser.phone
+                            },
+                            nameImage: product.name_image !== null ? product.name_image : null,
+                            urlImage: product.url_image !== null ? product.url_image : null,
+                        }
+                    })
+                
+            }
+        })
+        return{
+            data: orders,
+            totalPages,
+            currentPage: page,
+            total: count
+        }
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
 module.exports = {
     createOrder,
     queryOrders,
@@ -444,5 +790,9 @@ module.exports = {
     queryOrdersByCarpenterId,
     updateStep,
     createStep,
-    updateProccessOrder
+    updateProccessOrder,
+    updateOrder,
+    queryOrdersWithProccess,
+    queryOrdersByIdManager,
+    queryOrdersWithWorkByIdManager
 }

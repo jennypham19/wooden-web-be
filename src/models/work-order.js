@@ -22,6 +22,10 @@ module.exports = (sequelize, DataTypes) => {
             WorkOrder.belongsTo(models.Order, {
                 foreignKey: 'order_id',
                 as: 'workOrder'
+            }),
+            WorkOrder.hasOne(models.MilestoneChangeLog, {
+                foreignKey: 'work_order_id',
+                as: 'workOderMilestoneChangeLog'
             })
         }
     }
@@ -48,6 +52,15 @@ module.exports = (sequelize, DataTypes) => {
         work_milestone: {
             type: DataTypes.STRING,
             allowNull: false
+        },
+        evaluated_status: {
+            type: DataTypes.ENUM('pending', 'rework', 'approved'),
+            defaultValue: 'pending',
+            allowNull: false
+        },
+        evaluation_description: {
+            type: DataTypes.TEXT,
+            allowNull: true
         }
     }, {
         sequelize,

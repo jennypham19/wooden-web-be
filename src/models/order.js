@@ -30,6 +30,14 @@ module.exports = (sequelize, DataTypes) => {
             Order.hasOne(models.WorkOrder, {
                 foreignKey: 'order_id',
                 as: 'orderWorkOrder'
+            }),
+            Order.hasOne(models.OrderChangeLog, {
+                foreignKey: 'order_id',
+                as: 'orderChangeLog'
+            }),
+            Order.belongsTo(models.User, {
+                foreignKey: 'created_by',
+                as: 'orderCreatedBy'
             })
         }
     }
@@ -98,6 +106,19 @@ module.exports = (sequelize, DataTypes) => {
         is_created_work: {
             type: DataTypes.BOOLEAN,
             defaultValue: false // false là chưa tạo, true là đã tạo để phục vụ cho bên thợ mộc
+        },
+        reason: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+        // Cột created_by: id của nhân viên sale
+        created_by: {
+            type: DataTypes.UUID,
+            allowNull: true
+        },
+        is_evaluated: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
         }
     }, {
         sequelize,

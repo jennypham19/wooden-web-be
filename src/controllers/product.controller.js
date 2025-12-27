@@ -30,9 +30,16 @@ const updateImageAndStatusProduct = catchAsync(async(req, res) => {
     res.status(StatusCodes.OK).send({ success: true, message: 'Cập nhật bản ghi thành công.'})
 })
 
+/* Send request milestone */
+const sendRequestMilestone = catchAsync(async(req, res) => {
+    await productService.sendRequestMilestone(req.params.id, req.body);
+    res.status(StatusCodes.OK).send({ success: true, message: "Gửi yêu cầu làm lại thành công."})
+})
+
 module.exports = {
     queryProductsByOrderId,
     queryProductsByOrderIdAndStatus,
     getDetailWorkOrderByProduct,
-    updateImageAndStatusProduct
+    updateImageAndStatusProduct,
+    sendRequestMilestone
 }

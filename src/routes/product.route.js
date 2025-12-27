@@ -11,7 +11,7 @@ router.use(protect);
 // Lấy danh sách sản phẩm theo đơn hàng
 router.get(
     '/get-products-by-order/:id',
-    authorize('technical_design', 'factory_manager', 'carpenter'),
+    authorize('technical_design', 'factory_manager', 'carpenter', 'employee'),
     validate(productValidation.queryProducts),
     productController.queryProductsByOrderId
 )
@@ -36,6 +36,13 @@ router.put(
     '/image-and-status-product-updated/:id',
     validate(productValidation.updateImageAndStatusProduct),
     productController.updateImageAndStatusProduct
+)
+
+/* Send request milestone */
+router.put(
+    '/request-milestone-sent/:id',
+    validate(productValidation.sendRequestMilestone),
+    productController.sendRequestMilestone
 )
 
 module.exports = router;

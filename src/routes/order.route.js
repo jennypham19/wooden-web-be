@@ -54,4 +54,24 @@ router.patch(
     orderController.updateProccessOrder
 )
 
+// update order
+router.put(
+    '/order-updated/:id',
+    validate(orderValidation.updateOrder),
+    orderController.updateDateAndReason
+)
+
+/* Lấy danh sách đơn hàng có tiến độ là 75% để đánh giá */
+router.get(
+    '/orders-with-proccess',
+    validate(orderValidation.queryOrdersWithProccess),
+    orderController.queryOrdersWithProccess
+)
+
+/* ------------- Lấy danh sách đơn hàng theo id quản lý ------------- */
+router.get('/list-orders-by-manager', validate(orderValidation.queryOrders), orderController.queryOrdersByIdManager)
+
+/* Lấy danh sách đơn hàng có công việc được tạo bởi id quản lý */
+router.get('/list-orders-with-work-by-manager', validate(orderValidation.queryOrders), orderController.queryOrdersWithWorkByIdManager)
+
 module.exports = router;
