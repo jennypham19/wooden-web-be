@@ -1,7 +1,8 @@
 const { StatusCodes } = require('http-status-codes');
-const { Product, Order, User, WorkMilestone, Worker, WorkOrder, Step, ImageStep, sequelize } = require('../models');
+const { Product, Order, User, WorkMilestone, Worker, WorkOrder, Step, ImageStep, MilestoneChangeLog, Notification, sequelize } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { Op } = require('sequelize');
+const { getLabelEvaluatedStatus } = require('../utils/labelFromEnToVi');
 
 // Lấy danh sách sản phẩm theo id đơn hàng
 const queryProductsByOrderId = async(orderId) => {
@@ -147,6 +148,10 @@ const getDetailWorkOrderByProduct = async(productId) => {
                         createdAt: workMilestone.createdAt,
                         updatedAt: workMilestone.updatedAt,
                         evaluatedStatus: workMilestone.evaluated_status,
+                        reworkReason: workMilestone.rework_reason,
+                        reworkStartedAt: workMilestone.rework_started_at,
+                        reworkDeadline: workMilestone.rework_deadline,
+                        version: workMilestone.version,
                         steps: (workMilestone.workMilestoneSteps ?? [])
                             .map((step) => {
                                 return {
@@ -202,10 +207,49 @@ const sendRequestMilestone = async(id, requestBody) => {
         const { evaluatedStatus, reworkReason, reworkStartedAt, reworkDeadline, changedBy, changedRole, carpenters } = requestBody;
         const milestoneDB = await WorkMilestone.findByPk(id, { transaction });
         if(!milestoneDB) {
-            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi nào");
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi mốc công việc nào");
         }
-        console.log("milestoneDB: ", milestoneDB);
-        
+        const oldEvaluatedStatus = milestoneDB.evaluated_status
+        // 1. Insert trong bảng WorkMilestones
+        milestoneDB.evaluated_status = evaluatedStatus;
+        milestoneDB.rework_reason = reworkReason;
+        milestoneDB.rework_started_at = reworkStartedAt;
+        milestoneDB.rework_deadline = reworkDeadline;
+        milestoneDB.save({ transaction });
+
+        // 2. Update lại tiến độ trong step;
+        const stepsDB = await Step.findAll({ where: { work_milestone_id: milestoneDB.id }}, { transaction });
+        if(stepsDB.length === 0){
+            throw new ApiError(StatusCodes.NOT_FOUND, 'Không tồn tại danh sách step nào');
+        }
+        for(const step of stepsDB){
+            step.proccess = 'pending';
+            step.progress = '0%';
+            await step.save({ transaction })
+        }
+
+        // 3. Insert trong bảng MilestoneChangeLogs
+        await MilestoneChangeLog.create({
+            work_order_id: milestoneDB.work_order_id,
+            work_milestone_id: milestoneDB.id,
+            field_name: 'evaluated_status',
+            old_status: oldEvaluatedStatus,
+            new_status: evaluatedStatus,
+            changed_by: changedBy,
+            changed_role: changedRole
+        }, { transaction });
+
+        // 4. Insert trong bảng Notifications
+        if(carpenters.length > 0){
+            for(const carpenter of carpenters){
+                await Notification.create({
+                    user_id: carpenter.id,
+                    type: 'EVALUATED_STATUS_CHANGED',
+                    title: `Mốc: ${milestoneDB.name}`,
+                    content: `Trạng thái đánh giá được thay đổi từ ${getLabelEvaluatedStatus(oldEvaluatedStatus)} sang ${getLabelEvaluatedStatus(evaluatedStatus)}`
+                })
+            }
+        }
         await transaction.commit()
     } catch (error) {
         if(error instanceof ApiError) throw error;

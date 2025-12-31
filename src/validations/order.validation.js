@@ -92,6 +92,7 @@ const updateStep = {
         id: Joi.string().required()
     }),
     body: Joi.object().keys({
+        workMilestoneId: Joi.string().required(),
         proccess: Joi.string().required().messages({
            'string.empty': 'Trạng thái không được để trống',
            'any.required': 'Trạng thái là trường bắt buộc' 

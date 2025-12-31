@@ -78,6 +78,12 @@ const queryOrdersWithWorkByIdManager = catchAsync(async(req, res) => {
     const orders = await orderService.queryOrdersWithWorkByIdManager(queryOptions);
     res.status(StatusCodes.OK).send({ success: true, message: 'Lấy danh sách thành công.', data: orders })
 })
+
+/* Xóa bước vừa thêm */
+const deleteStepAdded = catchAsync(async(req, res) => {
+    await orderService.deleteStepAdded(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Xóa bản ghi thành công.'})
+})
 module.exports = {
     createOrder,
     queryOrders,
@@ -90,5 +96,6 @@ module.exports = {
     updateDateAndReason,
     queryOrdersWithProccess,
     queryOrdersByIdManager,
-    queryOrdersWithWorkByIdManager
+    queryOrdersWithWorkByIdManager,
+    deleteStepAdded
 }

@@ -1,5 +1,5 @@
 const { StatusCodes } = require('http-status-codes');
-const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderReferenceLink, InputFile, ReferenceLink, WorkMilestone, Worker, WorkOrder, Step, ImageStep, OrderChangeLog, Notification } = require('../models');
+const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderReferenceLink, InputFile, ReferenceLink, WorkMilestone, Worker, WorkOrder, Step, ImageStep, OrderChangeLog, Notification, WorkMilestoneHistory, StepHistory, ImageStepHistory } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { Op, where, STRING } = require('sequelize');
 const { FormatDate } = require('../utils/DateTime');
@@ -384,7 +384,7 @@ const queryOrdersByCarpenterId = async(queryOptions) => {
 const updateStep = async(id, stepBody) => {
     const transaction = await sequelize.transaction();
     try {
-        const { proccess, progress, images } = stepBody;
+        const { proccess, progress, images, workMilestoneId } = stepBody;
         const stepDB = await Step.findByPk(id, { transaction });
         if(!stepDB){
             throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi này.")
@@ -401,12 +401,70 @@ const updateStep = async(id, stepBody) => {
                 }, { transaction })
             }
         }
+
+        // Check trường hợp khi các bước trong mốc đều hoàn thành thì cập nhật trong evaluated_status = 'pending'
+        await updateEvaluatedStatusInWorkMilestone(workMilestoneId, transaction);
+
         await transaction.commit();
     } catch (error) {
         if(error instanceof ApiError) throw error;
         await transaction.rollback();
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
+}
+
+// Cập nhật trường evaluatedStatus trong bảng WorkMilestone khi các bước đều hoàn thành hoặc chưa
+const updateEvaluatedStatusInWorkMilestone = async(id, transaction) => {
+    const workMilestoneDB = await WorkMilestone.findByPk(id, { transaction });
+    if(!workMilestoneDB){
+        throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi mốc công việc này.")
+    }
+    const stepsDB = await Step.findAll({ 
+        where: { work_milestone_id: id }, 
+        transaction
+    });
+    if(stepsDB.length === 0){
+        throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại danh sách bước của mốc công việc này.")
+    }
+    const allStepDone = stepsDB.every(s => s.proccess === 'completed');
+    if(!allStepDone) return;
+    workMilestoneDB.evaluated_status = 'pending';
+    await workMilestoneDB.save({ transaction });
+    await insertDataToTableHistoryWithStatusPending(workMilestoneDB, transaction);
+}
+
+// Insert dữ liệu vào bảng WorkMileHistorys, StepHistorys, ImageStepHistorys khi mốc công việc ở trạng thái pending
+const insertDataToTableHistoryWithStatusPending = async(workMilestone, transaction) => {
+    const newWorkMilestone = workMilestone.toJSON();
+    const workMilestoneHistoryDB = await WorkMilestoneHistory.create({
+        work_milestone_id: newWorkMilestone.id,
+        work_order_id: newWorkMilestone.work_order_id,
+        version: newWorkMilestone.version,
+        evaluated_status: newWorkMilestone.evaluated_status,
+        action: 'PENDING'
+    }, { transaction })
+    const stepsDB = await Step.findAll({ where: { work_milestone_id: workMilestone.id }, transaction });
+    
+    for(const step of stepsDB){
+        const newStep = step.toJSON()
+        console.log("newStep: ", newStep);
+        const stepHistoryDB = await StepHistory.create({
+            work_milestone_history_id: workMilestoneHistoryDB.id,
+            name: newStep.name,
+            proccess: newStep.proccess,
+            progress: newStep.progress
+        }, { transaction });
+        const imageStepDB = await ImageStep.findAll({ where: { step_id: step.id }, transaction })
+        for(const imageStep of imageStepDB){
+            const newImageStep= imageStep.toJSON()
+            await ImageStepHistory.create({
+                step_history_id: stepHistoryDB.id,
+                name: newImageStep.name,
+                url: newImageStep.url
+            }, { transaction })
+        }
+    }
+
 }
 
 // Thêm mới step
@@ -419,6 +477,7 @@ const createStep = async(stepBody) => {
             throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi này");
         }
         workMilestoneDB.step = workMilestoneDB.step + 1;
+        workMilestoneDB.evaluated_status = 'not_reviewed';
         await workMilestoneDB.save({ transaction });
 
         await Step.create({
@@ -430,6 +489,27 @@ const createStep = async(stepBody) => {
         if(error instanceof ApiError) throw error;
         await transaction.rollback();
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+/* Xóa bước vừa thêm */
+const deleteStepAdded = async(stepId) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const stepAdded = await Step.findByPk(stepId, { transaction });
+        if(!stepAdded){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi nào.")
+        }
+        const workMilestoneDB = await WorkMilestone.findOne({ where: { id: stepAdded.work_milestone_id }}, { transaction });
+        workMilestoneDB.evaluated_status = 'pending';
+        workMilestoneDB.step = workMilestoneDB.step - 1;
+        await workMilestoneDB.save({ transaction });
+        await Step.destroy({ where: { id: stepId }}, { transaction });
+        await transaction.commit()
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        await transaction.rollback();
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message);
     }
 }
 
@@ -794,5 +874,6 @@ module.exports = {
     updateOrder,
     queryOrdersWithProccess,
     queryOrdersByIdManager,
-    queryOrdersWithWorkByIdManager
+    queryOrdersWithWorkByIdManager,
+    deleteStepAdded
 }

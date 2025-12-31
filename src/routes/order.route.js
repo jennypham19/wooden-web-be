@@ -48,6 +48,13 @@ router.post(
     orderController.createAddStep
 )
 
+/* Xóa bước vừa được thêm */
+router.delete(
+    '/step-added-deleted/:id',
+    validate(baseValidation.queryOption),
+    orderController.deleteStepAdded
+)
+
 router.patch(
     '/proccess-order-updated/:id',
     validate(orderValidation.updateProccessOrder),

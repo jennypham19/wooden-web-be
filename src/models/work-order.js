@@ -26,6 +26,10 @@ module.exports = (sequelize, DataTypes) => {
             WorkOrder.hasOne(models.MilestoneChangeLog, {
                 foreignKey: 'work_order_id',
                 as: 'workOderMilestoneChangeLog'
+            }),
+            WorkOrder.hasMany(models.WorkMilestoneHistory, {
+                foreignKey: 'work_order_id',
+                as: 'workOrderMilestoneHistory'
             })
         }
     }
