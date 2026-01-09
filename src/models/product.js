@@ -22,6 +22,18 @@ module.exports = (sequelize, DataTypes) => {
             Product.hasOne(models.WorkOrder, {
                 foreignKey: 'product_id',
                 as: 'productWorkOrder'
+            });
+            Product.hasOne(models.ProductReview, {
+                foreignKey: 'product_id',
+                as: 'productReview'
+            });
+            Product.hasOne(models.DimensionProduct, {
+                foreignKey: 'product_id',
+                as: 'productDimension'
+            });
+            Product.hasOne(models.Feedback, {
+                foreignKey: 'product_id',
+                as: 'productFeedback'
             })
         }
     }
@@ -88,6 +100,14 @@ module.exports = (sequelize, DataTypes) => {
         url_image: {
             type: DataTypes.STRING,
             allowNull: true,
+        },
+        completed_date: {
+            type: DataTypes.DATE,
+            allowNull: true
+        },
+        is_evaluated: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
         }
     }, {
         sequelize,

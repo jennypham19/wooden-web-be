@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
             Step.hasMany(models.ImageStep, {
                 foreignKey: 'step_id',
                 as: 'stepImageSteps'
+            });
+            Step.belongsTo(models.User, {
+                foreignKey: 'created_by',
+                as: 'stepCreatedByUser'
             })
         }
     }
@@ -40,6 +44,10 @@ module.exports = (sequelize, DataTypes) => {
         work_milestone_id: {
             type: DataTypes.UUID,
             allowNull: false
+        },
+        created_by: {
+            type: DataTypes.UUID,
+            allowNull: true
         }
     }, {
         sequelize,

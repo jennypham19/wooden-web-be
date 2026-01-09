@@ -34,7 +34,10 @@ const storage = new CloudinaryStorage({
 
     const correctName = Buffer.from(file.originalname, "latin1").toString("utf8");
     
-    const ext = path.extname(file.originalname).toLowerCase().replace(".", "");
+    let ext = path.extname(file.originalname).toLowerCase().replace(".", "");
+    if(ext === 'jfif'){
+      ext = 'jpg'
+    }
     // const baseName = path.parse(file.originalname).name.replace(/[^a-zA-Z0-9-_]/g, "_");
     const baseName = path.parse(correctName).name;
     
@@ -80,6 +83,7 @@ const upload = multer({
       "application/xml",
       "text/xml",
       "image/svg+xml",
+      "image/*"
     ];
 
     // Lấy extension để check thêm (cho .xxml)

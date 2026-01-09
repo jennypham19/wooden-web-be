@@ -1,8 +1,10 @@
 const { StatusCodes } = require('http-status-codes');
-const { Product, Order, User, WorkMilestone, Worker, WorkOrder, Step, ImageStep, MilestoneChangeLog, Notification, sequelize } = require('../models');
+const { Product, Order, User, WorkMilestone, Worker, WorkOrder, Step, Customer, ImageStep, MilestoneChangeLog, Notification, WorkOrderChangeLog, ProductReview, sequelize } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { Op } = require('sequelize');
 const { getLabelEvaluatedStatus } = require('../utils/labelFromEnToVi');
+const orderService = require('./order.service')
+
 
 // Lấy danh sách sản phẩm theo id đơn hàng
 const queryProductsByOrderId = async(orderId) => {
@@ -13,7 +15,10 @@ const queryProductsByOrderId = async(orderId) => {
         }
         const productsDB = await Product.findAll({
             where: { order_id: orderId },
-            include: [{ model: User, as: 'productsUser' }]
+            include: [
+                { model: User, as: 'productsUser' },
+                { model: DimensionProduct, as: 'productDimension' }
+            ]
         });
         const products = productsDB.map((product) => {
             const newProduct = product.toJSON();
@@ -34,6 +39,13 @@ const queryProductsByOrderId = async(orderId) => {
                 updatedAt: newProduct.updatedAt,
                 nameImage: newProduct.name_image !== null ? newProduct.name_image : null,
                 urlImage: newProduct.url_image !== null ? newProduct.url_image : null,
+                isEvaluated: newProduct.is_evaluated,
+                completedDate: newProduct.completed_date !== null ? newProduct.completed_date : null,
+                dimension: {
+                    length: newProduct.productDimension.length,
+                    width: newProduct.productDimension.width,
+                    height: newProduct.productDimension.height
+                }
             }
         });
         return products;
@@ -52,7 +64,10 @@ const queryProductsByOrderIdAndStatus = async(orderId) => {
         }
         const productsDB = await Product.findAll({
             where: { order_id: orderId, is_created: false },
-            include: [{ model: User, as: 'productsUser' }]
+            include: [
+                { model: User, as: 'productsUser' },
+                { model: DimensionProduct, as: 'productDimension' }
+            ]
         });
         const products = productsDB.map((product) => {
             const newProduct = product.toJSON();
@@ -73,6 +88,13 @@ const queryProductsByOrderIdAndStatus = async(orderId) => {
                 updatedAt: newProduct.updatedAt,
                 nameImage: newProduct.name_image !== null ? newProduct.name_image : null,
                 urlImage: newProduct.url_image !== null ? newProduct.url_image : null,
+                isEvaluated: newProduct.is_evaluated,
+                completedDate: newProduct.completed_date !== null ? newProduct.completed_date : null,
+                dimension: {
+                    length: newProduct.productDimension.length,
+                    width: newProduct.productDimension.width,
+                    height: newProduct.productDimension.height
+                }
             }
         });
         return products;
@@ -127,6 +149,7 @@ const getDetailWorkOrderByProduct = async(productId) => {
                 avatarUrl: newWorkOrder.workOrdersManager.avatar_url
             },
             evaluatedStatus: newWorkOrder.evaluated_status,
+            evaluationDescriptionWorkOrder: newWorkOrder.evaluation_description,
             createdAt: newWorkOrder.createdAt,
             updatedAt: newWorkOrder.updatedAt,
             workers: (newWorkOrder.workOrderWorkers ?? [])
@@ -148,6 +171,7 @@ const getDetailWorkOrderByProduct = async(productId) => {
                         createdAt: workMilestone.createdAt,
                         updatedAt: workMilestone.updatedAt,
                         evaluatedStatus: workMilestone.evaluated_status,
+                        evaluationDescription: workMilestone.evaluation_description,
                         reworkReason: workMilestone.rework_reason,
                         reworkStartedAt: workMilestone.rework_started_at,
                         reworkDeadline: workMilestone.rework_deadline,
@@ -186,6 +210,8 @@ const updateImageAndStatusProduct = async(id, productBody) => {
         productDB.status = status;
         productDB.name_image = nameImage;
         productDB.url_image = urlImage;
+        productDB.proccess = 'completed_100%',
+        productDB.completed_date = new Date().toISOString();
         await productDB.save({ transaction });
         
         const orderDB = await Order.findOne({
@@ -209,15 +235,19 @@ const sendRequestMilestone = async(id, requestBody) => {
         if(!milestoneDB) {
             throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi mốc công việc nào");
         }
+        // 1. Insert dữ liệu vào bảng WorkMileHistorys, StepHistorys, ImageStepHistorys khi mốc công việc ở trạng thái rework
+
+        await orderService.insertDataToTableHistoryWithStatusRework(milestoneDB, transaction);
+
         const oldEvaluatedStatus = milestoneDB.evaluated_status
-        // 1. Insert trong bảng WorkMilestones
+        // 2. Insert trong bảng WorkMilestones
         milestoneDB.evaluated_status = evaluatedStatus;
         milestoneDB.rework_reason = reworkReason;
         milestoneDB.rework_started_at = reworkStartedAt;
         milestoneDB.rework_deadline = reworkDeadline;
         milestoneDB.save({ transaction });
 
-        // 2. Update lại tiến độ trong step;
+        // 3. Update lại tiến độ trong step;
         const stepsDB = await Step.findAll({ where: { work_milestone_id: milestoneDB.id }}, { transaction });
         if(stepsDB.length === 0){
             throw new ApiError(StatusCodes.NOT_FOUND, 'Không tồn tại danh sách step nào');
@@ -225,8 +255,63 @@ const sendRequestMilestone = async(id, requestBody) => {
         for(const step of stepsDB){
             step.proccess = 'pending';
             step.progress = '0%';
-            await step.save({ transaction })
+            await step.save({ transaction });
+
         }
+
+        // 4. Xóa ảnh của các step đó
+        await ImageStep.destroy({ 
+            where: { step_id: { [Op.in]: stepsDB.map((step) => step.id) }}
+        }, { transaction });
+
+        // 5. Insert trong bảng MilestoneChangeLogs
+        await MilestoneChangeLog.create({
+            work_order_id: milestoneDB.work_order_id,
+            work_milestone_id: milestoneDB.id,
+            field_name: 'evaluated_status',
+            old_status: oldEvaluatedStatus,
+            new_status: evaluatedStatus,
+            changed_by: changedBy,
+            changed_role: changedRole
+        }, { transaction });
+
+        // 6. Insert trong bảng Notifications
+        if(carpenters.length > 0){
+            for(const carpenter of carpenters){
+                await Notification.create({
+                    user_id: carpenter.id,
+                    type: 'EVALUATED_STATUS_CHANGED',
+                    title: `Mốc: ${milestoneDB.name}`,
+                    content: `Trạng thái đánh giá được thay đổi từ ${getLabelEvaluatedStatus(oldEvaluatedStatus)} sang ${getLabelEvaluatedStatus(evaluatedStatus)}`
+                })
+            }
+        }
+        await transaction.commit()
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        await transaction.rollback();
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+{/* Send evaluation milestone */}
+const sendEvaluationMilestone = async(id, requestBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { evaluatedStatus, evaluationDescription, changedBy, changedRole, carpenters } = requestBody;
+        const milestoneDB = await WorkMilestone.findByPk(id, { transaction });
+        if(!milestoneDB) {
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi mốc công việc nào");
+        }
+        // 1. Insert dữ liệu vào bảng WorkMileHistorys, StepHistorys, ImageStepHistorys khi mốc công việc ở trạng thái approved
+
+        await orderService.insertDataToTableHistoryWithStatusApproved(milestoneDB, transaction);
+
+        const oldEvaluatedStatus = milestoneDB.evaluated_status
+        // 2. Insert trong bảng WorkMilestones
+        milestoneDB.evaluated_status = evaluatedStatus;
+        milestoneDB.evaluation_description = evaluationDescription;
+        milestoneDB.save({ transaction });
 
         // 3. Insert trong bảng MilestoneChangeLogs
         await MilestoneChangeLog.create({
@@ -257,10 +342,229 @@ const sendRequestMilestone = async(id, requestBody) => {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
 }
+
+// Send evaluation work order 
+const sendEvaluationWorkOrder = async(id, evaluationWorkOrderBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { evaluatedStatusWorkOrder, evaluationDescriptionWorkOrder, changedBy, changedRole, carpenters} = evaluationWorkOrderBody;
+        const workOrderDB = await WorkOrder.findByPk(id, { transaction });
+        if(!workOrderDB) {
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi công việc nào");
+        }
+        const oldEvaluatedStatus = workOrderDB.evaluated_status;
+        // 1. Insert trong bảng WorkOrders
+        workOrderDB.evaluated_status = evaluatedStatusWorkOrder;
+        workOrderDB.evaluation_description = evaluationDescriptionWorkOrder;
+        workOrderDB.save({ transaction });
+
+        // // 2. Update proccess trong bảng Orders
+        // const orderDB = await Order.findOne({ where: { id: workOrderDB.order_id} }, { transaction });
+        // if(!orderDB){
+        //     throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại đơn hàng nào.")
+        // }
+        // orderDB.proccess = 'in_progress_75%'
+        // orderDB.save({ transaction });
+
+        // 3. Insert trong bảng WorkOrderChangeLogs
+        await WorkOrderChangeLog.create({
+            work_order_id: workOrderDB.id,
+            field_name: 'evaluated_status',
+            old_status: oldEvaluatedStatus,
+            new_status: evaluatedStatusWorkOrder,
+            changed_by: changedBy,
+            changed_role: changedRole
+        }, { transaction });
+
+        // 4. Insert trong bảng Notifications 
+        if(carpenters.length > 0){
+            for(const carpenter of carpenters){
+                await Notification.create({
+                    user_id: carpenter.id,
+                    type: 'EVALUATED_STATUS_CHANGED',
+                    title: `Công việc: ${workOrderDB.name}`,
+                    content: `Trạng thái đánh giá được thay đổi từ ${getLabelEvaluatedStatus(oldEvaluatedStatus)} sang ${getLabelEvaluatedStatus(evaluatedStatusWorkOrder)}`
+                })
+            }
+        }
+        await transaction.commit()
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        await transaction.rollback();
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+// Evaluate product
+const evaluationProduct = async(id, evaluationBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { reviews, comment, averageScore, orderId } = evaluationBody;
+        const productDB = await Product.findByPk(id, { transaction });
+        if(!productDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi sản phẩm nào.");
+        }
+
+        // 1. Insert dữ liệu vào bảng ProductReviews
+        await ProductReview.create({
+            product_id: productDB.id,
+            overall_quality: reviews.overallQuality,
+            aesthetics: reviews.aesthetics,
+            customer_requirement: reviews.customerRequirement,
+            satisfaction: reviews.satisfaction,
+            comment,
+            average_score: averageScore
+        }, { transaction })
+        
+        // 2. Cập nhật trường is_evaluated trong bảng Products
+        productDB.is_evaluated = true;
+        await productDB.save({ transaction });
+        
+        // 3. Tìm bản ghi đơn hàng theo orderId để cập nhật trạng thái và tiến độ;
+        const orderDB = await Order.findByPk(orderId, { transaction });
+        if(!orderDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi đơn hàng nào.");
+        }
+        // 4. Tìm các bản ghi sản phẩm theo orderId để kiểm tra và update
+        const productByOrderIdDB = await Product.findAll({
+            where: { order_id: orderId },
+            transaction
+        });
+        if(productByOrderIdDB.length === 0){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại các bản ghi sản phẩm nào");
+        }
+        const allEvaluatedProduct = productByOrderIdDB.every(p => p.is_evaluated === true);
+        if(allEvaluatedProduct) {
+            orderDB.status = 'completed';
+            orderDB.proccess = 'completed_100%';
+            orderDB.is_evaluated = true
+            await orderDB.save({ transaction });
+        }
+
+        await transaction.commit();
+    } catch (error) {
+        await transaction.rollback();
+        if(error instanceof ApiError) throw error;
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: ", + error.message)
+    }
+}
+
+// Lấy thông tin đánh giá sản phẩm theo id sản phẩm đã được đánh giá
+const getDataEvaluationProduct = async(id) => {
+    try {
+        const productReviewDB = await ProductReview.findOne({
+            where: { product_id: id },
+        });
+        if(!productReviewDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi do sản phẩm chưa được đánh giá.");
+        };
+        const newProductReview = productReviewDB.toJSON();
+        const productReview = {
+            id: newProductReview.id,
+            overallQuality: newProductReview.overall_quality,
+            aesthetics: newProductReview.aesthetics,
+            customerRequirement: newProductReview.customer_requirement,
+            satisfaction: newProductReview.satisfaction,
+            comment: newProductReview.comment !== null ? newProductReview.comment : null,
+            averageScore: newProductReview.average_score,
+            createdAt: newProductReview.createdAt,
+            updatedAt: newProductReview.updatedAt
+        }
+        return productReview;
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+// Lấy danh sách sản phẩm đã được hoàn thành
+const getCompletedProducts = async(queryOptions) => {
+    try {
+        const { page, limit, searchTerm } = queryOptions;
+        const offset = (page - 1) * limit;
+        const whereClause = { status: 'completed' };
+        if(searchTerm){
+            whereClause[Op.or] = [
+                { name: { [Op.iLike]: `%${searchTerm}%` }},
+            ]
+        }
+        const { count, rows: productsDB } = await Product.findAndCountAll({
+            where: whereClause,
+            include: [
+                {
+                    model: Order, 
+                    as: 'productsOrder',
+                    include: [{ model: Customer, as: 'ordersCustomer' }]
+                }
+            ],
+            limit,
+            offset,
+            order: [[ 'createdAt', 'DESC' ]],
+            distinct: true
+        });
+        const totalPages = Math.ceil(count/limit);
+        const products = productsDB.map((productDB) => {
+            const newProduct = productDB.toJSON();
+            return {
+                id: newProduct.id,
+                name: newProduct.name,
+                description: newProduct.description,
+                target: newProduct.target,
+                proccess: newProduct.proccess,
+                status: newProduct.status,
+                isCreated: newProduct.is_created,
+                nameImage: newProduct.name_image,
+                urlImage: newProduct.url_image,
+                completedDate: newProduct.completed_date,
+                isEvaluated: newProduct.is_evaluated,
+                createdAt: newProduct.createdAt,
+                updatedAt: newProduct.updatedAt,
+                order: {
+                    id: newProduct.productsOrder.id,
+                    codeOrder: newProduct.productsOrder.code_order,
+                    name: newProduct.productsOrder.name,
+                    dateOfReceipt: newProduct.productsOrder.date_of_receipt,
+                    dateOfPayment: newProduct.productsOrder.date_of_payment,
+                    proccess: newProduct.productsOrder.proccess,
+                    status: newProduct.productsOrder.status,
+                    amount: newProduct.productsOrder.amount,
+                    requiredNote: newProduct.productsOrder.required_note,
+                    isCreatedWork: newProduct.productsOrder.is_created_work,
+                    isEvaluated: newProduct.productsOrder.is_evaluated,
+                    createdAt: newProduct.productsOrder.createdAt,
+                    updatedAt: newProduct.productsOrder.updatedAt,
+                    customer: {
+                        id: newProduct.productsOrder.ordersCustomer.id,
+                        name: newProduct.productsOrder.ordersCustomer.name,
+                        phone: newProduct.productsOrder.ordersCustomer.phone,
+                        address: newProduct.productsOrder.ordersCustomer.address,
+                        amountOfOrders: newProduct.productsOrder.ordersCustomer.amount_of_orders,
+                        createdAt: newProduct.productsOrder.ordersCustomer.createdAt,
+                        updatedAt: newProduct.productsOrder.ordersCustomer.updatedAt,
+                    }
+                }
+            }
+        })
+        return{
+            data: products,
+            totalPages,
+            currentPage: page,
+            total: count
+        }
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
 module.exports = {
     queryProductsByOrderId,
     queryProductsByOrderIdAndStatus,
     getDetailWorkOrderByProduct,
     updateImageAndStatusProduct,
-    sendRequestMilestone
+    sendRequestMilestone,
+    sendEvaluationMilestone,
+    sendEvaluationWorkOrder,
+    evaluationProduct,
+    getDataEvaluationProduct,
+    getCompletedProducts
 }

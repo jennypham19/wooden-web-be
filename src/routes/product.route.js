@@ -45,4 +45,39 @@ router.put(
     productController.sendRequestMilestone
 )
 
+/* Send evaluation milestone */
+router.put(
+    '/evaluation-milestone-sent/:id',
+    validate(productValidation.sendEvaluationMilestone),
+    productController.sendEvaluationMilestone
+)
+
+/* Send evaluation work order */
+router.put(
+    '/evaluation-work-order-sent/:id',
+    validate(productValidation.sendEvaluationWorkOrder),
+    productController.sendEvaluationWorkOrder
+)
+
+/* Evaluation product */
+router.put(
+    '/evaluation-product/:id',
+    validate(productValidation.evaluationProduct),
+    productController.evaluationProduct
+)
+
+/* Lấy thông tin đánh giá sản phẩm theo id sản phẩm đã được đánh giá */
+router.get(
+    '/product-review-by-id/:id',
+    validate(baseValidation.queryOption),
+    productController.getDataProductReview
+)
+
+/* Lấy danh sách sản phẩm đã được hoàn thành */
+router.get(
+    '/list-completed-products',
+    validate(baseValidation.queryOptions),
+    productController.getCompletedProducts
+)
+
 module.exports = router;

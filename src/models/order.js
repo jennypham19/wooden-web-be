@@ -38,6 +38,10 @@ module.exports = (sequelize, DataTypes) => {
             Order.belongsTo(models.User, {
                 foreignKey: 'created_by',
                 as: 'orderCreatedBy'
+            }),
+            Order.hasMany(models.Feedback, {
+                foreignKey: 'order_id',
+                as: 'orderFeedback'
             })
         }
     }

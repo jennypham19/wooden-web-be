@@ -1,7 +1,7 @@
 const { StatusCodes } = require('http-status-codes');
-const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderReferenceLink, InputFile, ReferenceLink, WorkMilestone, Worker, WorkOrder, Step, ImageStep, OrderChangeLog, Notification, WorkMilestoneHistory, StepHistory, ImageStepHistory } = require('../models');
+const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderReferenceLink, DimensionProduct, InputFile, ReferenceLink, ProductReview, WorkMilestone, Worker, WorkOrder, Step, ImageStep, OrderChangeLog, Notification, WorkMilestoneHistory, StepHistory, ImageStepHistory } = require('../models');
 const ApiError = require('../utils/ApiError');
-const { Op, where, STRING } = require('sequelize');
+const { Op } = require('sequelize');
 const { FormatDate } = require('../utils/DateTime');
 
 /* ------------- Tạo đơn hàng -------------- */
@@ -25,7 +25,7 @@ const createOrder = async(orderBody) => {
         // Lưu sản phẩm
         if(products.length > 0 ){
             for(const product of products) {
-                await Product.create({
+                const productDB = await Product.create({
                     name: product.name,
                     description: product.description,
                     target: product.target,
@@ -33,6 +33,12 @@ const createOrder = async(orderBody) => {
                     manager_id: product.managerId,
                     status: product.status,
                     proccess: product.proccess
+                }, { transaction });
+                await DimensionProduct.create({
+                    product_id: productDB.id,
+                    length: product.lenghtProduct,
+                    width: product.widthProduct,
+                    height: product.heightProduct
                 }, { transaction })
             }
         }
@@ -83,7 +89,10 @@ const queryOrders = async(queryOptions) => {
                 {
                     model: Product,
                     as: 'orderProducts',
-                    include: [{ model: User, as: 'productsUser' }]
+                    include: [
+                        { model: User, as: 'productsUser' },
+                        { model: DimensionProduct, as: 'productDimension' }
+                    ]
                 },
                 {
                     model: User,
@@ -92,7 +101,7 @@ const queryOrders = async(queryOptions) => {
             ],
             limit,
             offset,
-            order: [[ 'createdAt', 'DESC']],
+            order: [[ 'createdAt', 'DESC'], [ 'orderProducts', 'updatedAt', 'DESC']],
             distinct: true
         });
         const totalPages = Math.ceil(count/limit);
@@ -134,6 +143,13 @@ const queryOrders = async(queryOptions) => {
                             },
                             nameImage: product.name_image !== null ? product.name_image : null,
                             urlImage: product.url_image !== null ? product.url_image : null,
+                            isEvaluated: product.is_evaluated,
+                            completedDate: product.completed_date !== null ? product.completed_date : null,
+                            dimension: {
+                                length: product.productDimension.length,
+                                width: product.productDimension.width,
+                                height: product.productDimension.height
+                            }
                         }
                     })
                 
@@ -162,7 +178,10 @@ const getDetailOrder = async(id) => {
                 {
                     model: Product,
                     as: 'orderProducts',
-                    include: [{ model: User, as: 'productsUser' }]
+                    include: [
+                        { model: User, as: 'productsUser' },
+                        { model: DimensionProduct, as: 'productDimension' }
+                    ]
                 },
                 {
                     model: OrderInputFile,
@@ -214,6 +233,13 @@ const getDetailOrder = async(id) => {
                         },
                         nameImage: product.name_image !== null ? product.name_image : null,
                         urlImage: product.url_image !== null ? product.url_image : null,
+                        isEvaluated: product.is_evaluated,
+                        completedDate: product.completed_date !== null ? product.completed_date : null,
+                        dimension: {
+                            length: product.productDimension.length,
+                            width: product.productDimension.width,
+                            height: product.productDimension.height
+                        }
                     }
                 }),
             inputFiles: (newOrder.orderInputFiles ?? [])
@@ -303,7 +329,10 @@ const queryOrdersByCarpenterId = async(queryOptions) => {
                 {
                     model: Product,
                     as: 'orderProducts',
-                    include: [{ model: User, as: 'productsUser' }]
+                    include: [
+                        { model: User, as: 'productsUser' },
+                        { model: DimensionProduct, as: 'productDimension' }
+                    ]
                 },
                 {
                     model: WorkOrder,
@@ -364,6 +393,13 @@ const queryOrdersByCarpenterId = async(queryOptions) => {
                             },
                             nameImage: product.name_image !== null ? product.name_image : null,
                             urlImage: product.url_image !== null ? product.url_image : null,
+                            isEvaluated: product.is_evaluated,
+                            completedDate: product.completed_date !== null ? product.completed_date : null,
+                            dimension: {
+                                length: product.productDimension.length,
+                                width: product.productDimension.width,
+                                height: product.productDimension.height
+                            }
                         }
                     })
                 
@@ -426,28 +462,62 @@ const updateEvaluatedStatusInWorkMilestone = async(id, transaction) => {
     if(stepsDB.length === 0){
         throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại danh sách bước của mốc công việc này.")
     }
+    if(workMilestoneDB.evaluated_status === 'rework'){
+        workMilestoneDB.version = workMilestoneDB.version + 1;
+    }
     const allStepDone = stepsDB.every(s => s.proccess === 'completed');
     if(!allStepDone) return;
     workMilestoneDB.evaluated_status = 'pending';
     await workMilestoneDB.save({ transaction });
-    await insertDataToTableHistoryWithStatusPending(workMilestoneDB, transaction);
 }
 
-// Insert dữ liệu vào bảng WorkMileHistorys, StepHistorys, ImageStepHistorys khi mốc công việc ở trạng thái pending
-const insertDataToTableHistoryWithStatusPending = async(workMilestone, transaction) => {
+// Insert dữ liệu vào bảng WorkMileHistorys, StepHistorys, ImageStepHistorys khi mốc công việc ở trạng thái rework
+const insertDataToTableHistoryWithStatusRework = async(workMilestone, transaction) => {
     const newWorkMilestone = workMilestone.toJSON();
     const workMilestoneHistoryDB = await WorkMilestoneHistory.create({
         work_milestone_id: newWorkMilestone.id,
         work_order_id: newWorkMilestone.work_order_id,
         version: newWorkMilestone.version,
-        evaluated_status: newWorkMilestone.evaluated_status,
-        action: 'PENDING'
+        evaluated_status: 'rework',
+        action: 'REWORK'
     }, { transaction })
     const stepsDB = await Step.findAll({ where: { work_milestone_id: workMilestone.id }, transaction });
     
     for(const step of stepsDB){
         const newStep = step.toJSON()
-        console.log("newStep: ", newStep);
+        const stepHistoryDB = await StepHistory.create({
+            work_milestone_history_id: workMilestoneHistoryDB.id,
+            name: newStep.name,
+            proccess: newStep.proccess,
+            progress: newStep.progress
+        }, { transaction });
+        const imageStepDB = await ImageStep.findAll({ where: { step_id: step.id }, transaction })
+        for(const imageStep of imageStepDB){
+            const newImageStep= imageStep.toJSON()
+            await ImageStepHistory.create({
+                step_history_id: stepHistoryDB.id,
+                name: newImageStep.name,
+                url: newImageStep.url
+            }, { transaction })
+        }
+    }
+
+}
+
+// Insert dữ liệu vào bảng WorkMileHistorys, StepHistorys, ImageStepHistorys khi mốc công việc ở trạng thái approved
+const insertDataToTableHistoryWithStatusApproved = async(workMilestone, transaction) => {
+    const newWorkMilestone = workMilestone.toJSON();
+    const workMilestoneHistoryDB = await WorkMilestoneHistory.create({
+        work_milestone_id: newWorkMilestone.id,
+        work_order_id: newWorkMilestone.work_order_id,
+        version: newWorkMilestone.version,
+        evaluated_status: 'approved',
+        action: 'APPROVED'
+    }, { transaction })
+    const stepsDB = await Step.findAll({ where: { work_milestone_id: workMilestone.id }, transaction });
+    
+    for(const step of stepsDB){
+        const newStep = step.toJSON()
         const stepHistoryDB = await StepHistory.create({
             work_milestone_history_id: workMilestoneHistoryDB.id,
             name: newStep.name,
@@ -579,7 +649,7 @@ const queryOrdersWithProccess = async(queryOptions) => {
     try {
         const { page, limit, searchTerm, isEvaluated } = queryOptions;
         const offset = (page - 1) * limit;
-        const whereClause = { proccess: 'in_progress_75%' };
+        const whereClause = { proccess: { [Op.in]: ['in_progress_75%', 'completed_100%'] } };
         if(isEvaluated && isEvaluated !== 'all' && isEvaluated !== undefined && isEvaluated !== null){
             whereClause.is_evaluated = isEvaluated;
         }
@@ -599,7 +669,11 @@ const queryOrdersWithProccess = async(queryOptions) => {
                 {
                     model: Product,
                     as: 'orderProducts',
-                    include: [{ model: User, as: 'productsUser' }]
+                    include: [
+                        { model: User, as: 'productsUser' },
+                        { model: ProductReview, as: 'productReview' },
+                        { model: DimensionProduct, as: 'productDimension' }
+                    ]
                 },
                 {
                     model: User,
@@ -650,6 +724,13 @@ const queryOrdersWithProccess = async(queryOptions) => {
                             },
                             nameImage: product.name_image !== null ? product.name_image : null,
                             urlImage: product.url_image !== null ? product.url_image : null,
+                            isEvaluated: product.is_evaluated,
+                            completedDate: product.completed_date !== null ? product.completed_date : null,
+                            dimension: {
+                                length: product.productDimension.length,
+                                width: product.productDimension.width,
+                                height: product.productDimension.height
+                            }
                         }
                     })
                 
@@ -692,7 +773,10 @@ const queryOrdersByIdManager = async(queryOptions) => {
                     model: Product,
                     as: 'orderProducts',
                     where: { manager_id: id },
-                    include: [{ model: User, as: 'productsUser' }]
+                    include: [
+                        { model: User, as: 'productsUser' },
+                        { model: DimensionProduct, as: 'productDimension' }
+                    ]
                 },
                 {
                     model: User,
@@ -743,6 +827,13 @@ const queryOrdersByIdManager = async(queryOptions) => {
                             },
                             nameImage: product.name_image !== null ? product.name_image : null,
                             urlImage: product.url_image !== null ? product.url_image : null,
+                            isEvaluated: product.is_evaluated,
+                            completedDate: product.completed_date !== null ? product.completed_date : null,
+                            dimension: {
+                                length: product.productDimension.length,
+                                width: product.productDimension.width,
+                                height: product.productDimension.height
+                            }
                         }
                     })
                 
@@ -795,7 +886,8 @@ const queryOrdersWithWorkByIdManager = async(queryOptions) => {
                             as: 'productWorkOrder', 
                             where: whereWork, 
                             required: status && status !== 'all'
-                        }
+                        },
+                        { model: DimensionProduct, as: 'productDimension' }
                     ]
                 },
                 {
@@ -847,6 +939,13 @@ const queryOrdersWithWorkByIdManager = async(queryOptions) => {
                             },
                             nameImage: product.name_image !== null ? product.name_image : null,
                             urlImage: product.url_image !== null ? product.url_image : null,
+                            isEvaluated: product.is_evaluated,
+                            completedDate: product.completed_date !== null ? product.completed_date : null,
+                            dimension: {
+                                length: product.productDimension.length,
+                                width: product.productDimension.width,
+                                height: product.productDimension.height
+                            }
                         }
                     })
                 
@@ -875,5 +974,7 @@ module.exports = {
     queryOrdersWithProccess,
     queryOrdersByIdManager,
     queryOrdersWithWorkByIdManager,
-    deleteStepAdded
+    deleteStepAdded,
+    insertDataToTableHistoryWithStatusRework,
+    insertDataToTableHistoryWithStatusApproved
 }
