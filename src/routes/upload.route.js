@@ -17,6 +17,14 @@ router.post(
     uploadController.uploadImageSingle
 )
 
+//upload video
+router.post(
+    '/upload-video',
+    upload.single('video'),
+    checkFileSize.checkFileSize,
+    uploadController.uploadVideoSingle
+)
+
 // upload nhiều ảnh
 router.post(
     '/upload-images', 

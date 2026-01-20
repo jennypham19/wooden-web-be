@@ -18,6 +18,14 @@ module.exports = (sequelize, DataTypes) => {
             Feedback.belongsTo(models.User, {
                 foreignKey: 'staff_id',
                 as: 'feedbackStaff'
+            });
+            Feedback.hasMany(models.ImageFeedback, {
+                foreignKey: 'feedback_id',
+                as: 'feedbackImages'
+            });
+            Feedback.hasOne(models.VideoFeedback, {
+                foreignKey: 'feedback_id',
+                as: 'feedbackVideo'
             })
         }
     }

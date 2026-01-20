@@ -60,6 +60,22 @@ module.exports = (sequelize, DataTypes) => {
             User.hasMany(models.Feedback, {
                 foreignKey: 'staff_id',
                 as: 'staffFeedback'
+            });
+            User.hasMany(models.IssueReport, {
+                foreignKey: 'created_by',
+                as: 'createdByIssueReport'
+            });
+            User.hasMany(models.IssueReport, {
+                foreignKey: 'assigned_to',
+                as: 'assignedToIssueReport'
+            });
+            User.hasMany(models.AuditTrail, {
+                foreignKey: 'created_by',
+                as: 'createdByAuditTrail'
+            });
+            User.hasMany(models.ProposedSolution, {
+                foreignKey: 'approved_by',
+                as: 'approvedByProposedSolution'
             })
         }
     }

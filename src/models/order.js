@@ -42,6 +42,10 @@ module.exports = (sequelize, DataTypes) => {
             Order.hasMany(models.Feedback, {
                 foreignKey: 'order_id',
                 as: 'orderFeedback'
+            }),
+            Order.hasMany(models.IssueReport, {
+                foreignKey: 'order_id',
+                as: 'orderIssueReport'
             })
         }
     }
@@ -123,6 +127,10 @@ module.exports = (sequelize, DataTypes) => {
         is_evaluated: {
             type: DataTypes.BOOLEAN,
             defaultValue: false
+        },
+        feedback_status: {
+            type: DataTypes.STRING,
+            allowNull: true
         }
     }, {
         sequelize,

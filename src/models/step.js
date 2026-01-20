@@ -14,6 +14,10 @@ module.exports = (sequelize, DataTypes) => {
             Step.belongsTo(models.User, {
                 foreignKey: 'created_by',
                 as: 'stepCreatedByUser'
+            });
+            Step.hasMany(models.IssueReport, {
+                foreignKey: 'step_id',
+                as: 'stepIssueReport'
             })
         }
     }

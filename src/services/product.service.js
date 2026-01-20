@@ -1,5 +1,5 @@
 const { StatusCodes } = require('http-status-codes');
-const { Product, Order, User, WorkMilestone, Worker, WorkOrder, Step, Customer, ImageStep, MilestoneChangeLog, Notification, WorkOrderChangeLog, ProductReview, sequelize } = require('../models');
+const { Product, Order, User, WorkMilestone, Worker, WorkOrder, Step, Customer, DimensionProduct, ImageStep, MilestoneChangeLog, Notification, WorkOrderChangeLog, ProductReview, Feedback, ImageFeedback, VideoFeedback, sequelize } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { Op } = require('sequelize');
 const { getLabelEvaluatedStatus } = require('../utils/labelFromEnToVi');
@@ -482,19 +482,32 @@ const getCompletedProducts = async(queryOptions) => {
     try {
         const { page, limit, searchTerm } = queryOptions;
         const offset = (page - 1) * limit;
-        const whereClause = { status: 'completed' };
-        if(searchTerm){
-            whereClause[Op.or] = [
-                { name: { [Op.iLike]: `%${searchTerm}%` }},
-            ]
-        }
+        const whereClause = { 
+            status: 'completed',
+            ... (searchTerm && {
+                [Op.or]: [
+                    { name: { [Op.iLike]: `%${searchTerm}%` }}
+                ]
+            }) 
+        };
+
         const { count, rows: productsDB } = await Product.findAndCountAll({
             where: whereClause,
             include: [
                 {
                     model: Order, 
                     as: 'productsOrder',
-                    include: [{ model: Customer, as: 'ordersCustomer' }]
+                    required: false,
+                    include: [{ model: Customer, as: 'ordersCustomer', required: false }]
+                },
+                {
+                    model: Feedback,
+                    as: 'productFeedback',
+                    required: false,
+                    include: [
+                        { model: ImageFeedback, as: 'feedbackImages', required: false },
+                        { model: VideoFeedback, as: 'feedbackVideo', required: false },
+                    ] 
                 }
             ],
             limit,
@@ -505,6 +518,9 @@ const getCompletedProducts = async(queryOptions) => {
         const totalPages = Math.ceil(count/limit);
         const products = productsDB.map((productDB) => {
             const newProduct = productDB.toJSON();
+            const order = newProduct.productsOrder;
+            const customer = order.ordersCustomer;
+            const feedback = newProduct.productFeedback;
             return {
                 id: newProduct.id,
                 name: newProduct.name,
@@ -519,30 +535,56 @@ const getCompletedProducts = async(queryOptions) => {
                 isEvaluated: newProduct.is_evaluated,
                 createdAt: newProduct.createdAt,
                 updatedAt: newProduct.updatedAt,
+                feedbackStatus: newProduct.feedback_status,
                 order: {
-                    id: newProduct.productsOrder.id,
-                    codeOrder: newProduct.productsOrder.code_order,
-                    name: newProduct.productsOrder.name,
-                    dateOfReceipt: newProduct.productsOrder.date_of_receipt,
-                    dateOfPayment: newProduct.productsOrder.date_of_payment,
-                    proccess: newProduct.productsOrder.proccess,
-                    status: newProduct.productsOrder.status,
-                    amount: newProduct.productsOrder.amount,
-                    requiredNote: newProduct.productsOrder.required_note,
-                    isCreatedWork: newProduct.productsOrder.is_created_work,
-                    isEvaluated: newProduct.productsOrder.is_evaluated,
-                    createdAt: newProduct.productsOrder.createdAt,
-                    updatedAt: newProduct.productsOrder.updatedAt,
+                    id: order.id,
+                    codeOrder: order.code_order,
+                    name: order.name,
+                    dateOfReceipt: order.date_of_receipt,
+                    dateOfPayment: order.date_of_payment,
+                    proccess: order.proccess,
+                    status: order.status,
+                    amount: order.amount,
+                    requiredNote: order.required_note,
+                    isCreatedWork: order.is_created_work,
+                    isEvaluated: order.is_evaluated,
+                    createdAt: order.createdAt,
+                    updatedAt: order.updatedAt,
+                    feedbackStatus: order.feedback_status,
                     customer: {
-                        id: newProduct.productsOrder.ordersCustomer.id,
-                        name: newProduct.productsOrder.ordersCustomer.name,
-                        phone: newProduct.productsOrder.ordersCustomer.phone,
-                        address: newProduct.productsOrder.ordersCustomer.address,
-                        amountOfOrders: newProduct.productsOrder.ordersCustomer.amount_of_orders,
-                        createdAt: newProduct.productsOrder.ordersCustomer.createdAt,
-                        updatedAt: newProduct.productsOrder.ordersCustomer.updatedAt,
+                        id: customer.id,
+                        name: customer.name,
+                        phone: customer.phone,
+                        address: customer.address,
+                        amountOfOrders: customer.amount_of_orders,
+                        createdAt: customer.createdAt,
+                        updatedAt: customer.updatedAt,
                     }
-                }
+                },
+                feedback: feedback ? {
+                    id: feedback.id,
+                    rating: feedback.rating ? feedback.rating : null,
+                    customerFeedbackText: feedback.customer_feedback_text,
+                    staffNote: feedback.staff_note ? feedback.staff_note : null,
+                    feedbackDate: feedback.feedback_date,
+                    status: feedback.status,
+                    createdAt: feedback.createdAt,
+                    updatedAt: feedback.updatedAt,
+                    images: (feedback.feedbackImages || [])
+                        .map((image) => {
+                            return{
+                                id: image.id,
+                                name: image.name,
+                                url: image.url
+                            }
+                        }),
+                    video: feedback.feedbackVideo ? {
+                        id: feedback.feedbackVideo.id,
+                        name: feedback.feedbackVideo.name,
+                        url: feedback.feedbackVideo.url,
+                        duration: feedback.feedbackVideo.duration
+                    } : null
+                } : null
             }
         })
         return{
