@@ -6,11 +6,11 @@ const validate = require('../middlewares/validate');
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, authorize('employee', 'technical_design', 'factory_manager', 'production_supervisor'))
+
 // Lưu bom
 router.post(
     '/create-bom',
-    authorize('technical_design'),
     validate(bomValidation.createBom),
     bomController.createBom
 )
@@ -18,7 +18,6 @@ router.post(
 // Lấy danh sách
 router.get(
     '/get-list-boms',
-    authorize('technical_design'),
     validate(bomValidation.queryBoms),
     bomController.getListBoms
 )

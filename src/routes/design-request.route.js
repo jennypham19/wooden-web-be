@@ -6,12 +6,11 @@ const validate = require('../middlewares/validate');
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, authorize('employee', 'technical_design', 'factory_manager', 'production_supervisor'))
 
 // Lấy danh sách
 router.get(
     '/list-design-requests',
-    authorize('technical_design'),
     validate(designRequestValidation.queryDesignRequests),
     designRequestController.queryListDesignRequests
 )
@@ -19,7 +18,6 @@ router.get(
 // Tạo mới yêu cầu
 router.post(
     '/creation-bom',
-    authorize('technical_design'),
     validate(designRequestValidation.createDesignRequest),
     designRequestController.createDesignRequest
 )
@@ -27,7 +25,6 @@ router.post(
 // Lấy chi tiết
 router.get(
     '/detail-design-request/:id',
-    authorize('technical_design'),
     validate(designRequestValidation.queryDesignRequest),
     designRequestController.getDetailDesignRequets
 )
@@ -35,7 +32,6 @@ router.get(
 // Cập nhật trạng thái và ngày hoàn thành
 router.put(
     '/update-status-date/:id',
-    authorize('technical_design'),
     validate(designRequestValidation.updateStatusAndDate),
     designRequestController.updateStatusAndDate
 )
