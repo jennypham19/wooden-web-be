@@ -35,10 +35,38 @@ const getListUserWithRoleCarpenter = catchAsync(async (req, res) => {
     res.status(StatusCodes.OK).send({ success: true, message: "Lấy danh sách thợ mộc thành công. ", data: users})
 })
 
+// Vô hiệu hóa tài khoản
+const disableAccount = catchAsync(async (req, res) => {
+    await userService.disableAccount(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: "Vô hiệu hóa tài khoản thành công."})
+})
+
+// Kích hoạt tài khoản
+const enableAccount = catchAsync(async (req, res) => {
+    await userService.enableAccount(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: "Kích hoạt tài khoản thành công."})
+})
+
+// Xóa tài khoản (thay đổi trạng thái is_deleted = -1)
+const deleteAccount = catchAsync(async (req, res) => {
+    await userService.deleteAccount(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: "Xóa tài khoản thành công."})
+})
+
+// Reset mật khẩu tài khoản
+const resetPasswordAccount = catchAsync(async (req, res) => {
+    const newPassword = await userService.resetPasswordAccount(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: "Đặt lại mật khẩu thành công. Mật khẩu mới đã được gửi đến số điện thoại của bạn.", data: { newPassword } })
+})
+
 module.exports = {
     createUser,
     getListAccounts,
     getListDecentralizeAccounts,
     getDetailUserWithPermission,
-    getListUserWithRoleCarpenter
+    getListUserWithRoleCarpenter,
+    disableAccount,
+    enableAccount,
+    deleteAccount,
+    resetPasswordAccount
 }

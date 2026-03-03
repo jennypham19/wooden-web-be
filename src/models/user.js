@@ -176,6 +176,14 @@ module.exports = (sequelize, DataTypes) => {
         is_assigned: {
             type: DataTypes.BOOLEAN,
             defaultValue: false
+        },
+        is_deleted: {
+            type: DataTypes.INTEGER,
+            defaultValue: 1 // 1 là chưa xóa, -1 là đã xóa
+        },
+        is_default_type: {
+            type: DataTypes.INTEGER,
+            defaultValue: 1 // 1 được tạo tài khoản, -1 là tài khoản bị reset mật khẩu về mặc định, đăng nhập phải đổi mật khẩu
         }
     }, {
         sequelize,

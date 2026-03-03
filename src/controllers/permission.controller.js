@@ -50,6 +50,18 @@ const getMenuWithAction = catchAsync(async (req, res) => {
     const modules = await permissionService.getMenuWithAction();
     res.status(StatusCodes.OK).send({ success: true, message: 'Lấy danh sách thành công', data: modules})
 })
+
+// Kích hoạt
+const activeMenu = catchAsync(async (req, res) => {
+    await permissionService.activeMenu(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Kích hoạt chức năng thành công'})
+})
+// Vô hiệu hóa
+const unActiveMenu = catchAsync(async (req, res) => {
+    await permissionService.unActiveMenu(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Vô hiệu hóa chức năng thành công'})
+})
+
 /* 3. Quyền */
 // Tạo quyền 
 const createUserRole = catchAsync(async (req, res) => {
@@ -73,5 +85,7 @@ module.exports = {
     updateMenu,
     getMenuWithAction,
     createUserRole,
-    updateUserRole
+    updateUserRole,
+    activeMenu, 
+    unActiveMenu
 }

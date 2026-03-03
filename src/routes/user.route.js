@@ -46,6 +46,32 @@ router.get(
     userController.getListUserWithRoleCarpenter
 )
 
+// Vô hiệu hóa tài khoản
+router.patch(
+    '/disable-account/:id',
+    validate(userValidation.getUser),
+    userController.disableAccount
+)
 
+// Kích hoạt tài khoản
+router.patch(
+    '/enable-account/:id',
+    validate(userValidation.getUser),
+    userController.enableAccount
+)
+
+// Xóa tài khoản (thay đổi trạng thái is_deleted = -1)
+router.patch(
+    '/delete-account/:id',
+    validate(userValidation.getUser),
+    userController.deleteAccount
+)
+
+// Reset mật khẩu tài khoản
+router.patch(
+    '/reset-password-account/:id',
+    validate(userValidation.getUser),
+    userController.resetPasswordAccount
+)
 
 module.exports = router;

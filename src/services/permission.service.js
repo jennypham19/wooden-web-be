@@ -145,7 +145,8 @@ const getMenus = async (queryOptions) => {
             return {
                 ...newMenu,
                 parentCode: newMenu.parent_code,
-                parentName: data ? data.name : null
+                parentName: data ? data.name : null,
+                isActived: newMenu.is_actived
             }
         })
         const totalPages = Math.ceil(count/limit);
@@ -257,6 +258,7 @@ const updateMenu = async(id, menuBody) => {
 const getMenuWithAction = async () => {
     try {
         const menus = await Menu.findAll({
+            where: { is_actived: true },
             include: [
                 {
                     model: MenuAction,
@@ -304,6 +306,35 @@ const getMenuWithAction = async () => {
         return roots;
     } catch (error) {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Lỗi khi lấy danh sách: ' + error.message);
+    }
+}
+
+// Vô hiệu hóa
+const unActiveMenu = async(id) => {
+    try {
+        const menu = await Menu.findByPk(id);
+        if(!menu){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tìm thấy bản ghi nào"); 
+        }
+        menu.is_actived = false;
+        await menu.save();
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Lỗi xảy ra: " + error.message)
+    }
+}
+// Kích hoạt
+const activeMenu = async(id) => {
+    try {
+        const menu = await Menu.findByPk(id);
+        if(!menu){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tìm thấy bản ghi nào"); 
+        }
+        menu.is_actived = true;
+        await menu.save();
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Lỗi xảy ra: " + error.message)
     }
 }
 
@@ -442,5 +473,7 @@ module.exports = {
     updateMenu,
     getMenuWithAction,
     createUserRole,
-    updateUserRole
+    updateUserRole,
+    unActiveMenu,
+    activeMenu
 }

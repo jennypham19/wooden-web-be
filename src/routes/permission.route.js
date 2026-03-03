@@ -48,6 +48,16 @@ router
     .route('/menu-with-action')
     .get(permissionController.getMenuWithAction)
 
+// Vô hiệu hóa
+router
+    .route('/unactive-menu/:id')
+    .patch(validate(permissionValidation.getId), permissionController.unActiveMenu)
+
+// Kích hoạt
+router
+    .route('/active-menu/:id')
+    .patch(validate(permissionValidation.getId), permissionController.activeMenu)
+
 /* 3. Nhóm quyền */
 // Tạo quyền
 router.post('/create-user-permission', validate(permissionValidation.createOrUpdateUserRole), permissionController.createUserRole)

@@ -48,6 +48,10 @@ module.exports = (sequelize, DataTypes) => {
         parent_code: {
             type: DataTypes.STRING,
             allowNull: true
+        },
+        is_actived: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: true
         }
     }, {
         sequelize,

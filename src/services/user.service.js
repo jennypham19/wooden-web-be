@@ -4,6 +4,7 @@ const crypto = require('crypto')
 const { User, UserMenu, UserAction, Menu, MenuAction } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { Op, where } = require('sequelize');
+const smsService = require('./sms.service');
 
 // Lấy chi tiết user theo id
 const getUserById = async(id) => {
@@ -45,7 +46,7 @@ const queryListAccounts = async(queryOptions) => {
     try {
         const { page, limit, searchTerm, role } = queryOptions;
         const offset = (page - 1) * limit;
-        const whereClause = {};
+        const whereClause = { is_deleted: 1};
         if(role && role !== 'all'){
             whereClause.role = role;
         }
@@ -109,6 +110,7 @@ const queryListUser = async(queryOptions) => {
         const { count, rows: carpentersDB} = await User.findAndCountAll({
             where: { 
                 role: 'carpenter',
+                is_deleted: 1,
                 is_assigned: false
             },
             limit,
@@ -155,7 +157,7 @@ const queryListDecentralizedAccounts = async(queryOptions) => {
     try {
         const { page, limit, searchTerm, isPermission } = queryOptions;
         const offset = (page - 1) * limit;
-        const whereClause = {};
+        const whereClause = { is_deleted: 1 };
   // ✅ Kiểm tra isPermission có giá trị true hoặc false (không undefined/null)
         if (isPermission !== undefined && isPermission !== null) {
             whereClause.is_permission = isPermission;
@@ -279,6 +281,8 @@ const mapPermissionByTree = (userRole) => {
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
             isPermisison: user.is_permission,
+            isDeleted: user.is_deleted,
+            isDefaultType: user.is_default_type,
             permissions: mapMenu(menus)
         }
 }
@@ -317,6 +321,59 @@ const getDetailUserWithPermission = async (id) => {
     }
 }
 
+// Vô hiệu hóa
+const disableAccount = async(id) => {
+    try {
+        const account = await getUserById(id);
+        account.is_active = false;
+        await account.save()
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+// Kích hoạt
+const enableAccount = async(id) => {
+    try {
+        const account = await getUserById(id);
+        account.is_active = true;
+        await account.save()
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+// Xóa
+const deleteAccount = async(id) => {
+    try {
+        const account = await getUserById(id);
+        account.is_deleted = -1;
+        await account.save()
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+// Reset mật khẩu
+const resetPasswordAccount = async(id) => {
+  const user = await getUserById(id);
+  // Tự sinh password ngẫu nhiên dài 8 ký tự
+  const plainPassword = crypto.randomBytes(6).toString('base64').slice(0,6);
+  // Hash bằng bcrypt
+  const hashedPassword = await bcrypt.hash(plainPassword, 10);
+  await user.update({ password: hashedPassword, is_default_type: -1, is_reset: true });
+  user.password = undefined; // Không trả về password
+  const newUser = user.toJSON();
+  const userReturn = {
+    ...newUser,
+    fullName: newUser.full_name,
+    password: plainPassword
+  }
+//   await smsService.sendSMS(user.phone, plainPassword)
+
+  return userReturn;
+}
+
 module.exports = {
     createUser,
     queryListAccounts,
@@ -324,5 +381,9 @@ module.exports = {
     getUserById,
     getDetailUserWithPermission,
     mapPermissionByTree,
-    queryListUser
+    queryListUser,
+    disableAccount,
+    enableAccount,
+    deleteAccount,
+    resetPasswordAccount
 }

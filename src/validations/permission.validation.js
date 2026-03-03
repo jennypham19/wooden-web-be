@@ -12,7 +12,7 @@ const getQuery = {
 // Lấy chi tiết 1 bản ghi
 const getId = {
     params: Joi.object().keys({
-        id: Joi.number().integer().required()
+        id: Joi.string().required()
     })
 }
 
@@ -33,7 +33,7 @@ const createAction = {
 // Cập nhập 1 bản ghi
 const updateAction = {
     params: Joi.object().keys({
-        id: Joi.number().integer().required()
+        id: Joi.string().required()
     }),
     body: Joi.object().keys({
         name: Joi.string().required()
@@ -67,7 +67,7 @@ const createMenu = {
 // Thêm mới 1 bản ghi
 const updateMenu = {
     params: Joi.object().keys({
-        id: Joi.number().integer().required()
+        id: Joi.string().required()
     }),
     body: Joi.object().keys({
         code: Joi.string().required().messages({
@@ -113,7 +113,7 @@ const assignRoleGroupToUser = {
 // Lấy nhóm quyền theo id user
 const getRoleGroupToUser = {
   params: Joi.object().keys({
-    id: Joi.number().integer().required(),
+    id: Joi.string().required(),
   }),
 };
 
