@@ -110,10 +110,10 @@ const queryOrders = async(queryOptions) => {
             return {
                 id: newOrder.id,
                 name: newOrder.name,
-                customer: {
+                customer: newOrder.ordersCustomer ? {
                     id: newOrder.ordersCustomer.id,
                     name: newOrder.ordersCustomer.name
-                },
+                } : null,
                 codeOrder: newOrder.code_order,
                 dateOfReceipt: newOrder.date_of_receipt,
                 dateOfPayment: newOrder.date_of_payment,
@@ -136,20 +136,20 @@ const queryOrders = async(queryOptions) => {
                             target: product.target,
                             process: product.proccess,
                             status: product.status,
-                            manager: {
+                            manager: product.productsUser ? {
                                 fullName: product.productsUser.full_name,
                                 role: product.productsUser.role,
                                 phone: product.productsUser.phone
-                            },
+                            } : null,
                             nameImage: product.name_image !== null ? product.name_image : null,
                             urlImage: product.url_image !== null ? product.url_image : null,
                             isEvaluated: product.is_evaluated,
                             completedDate: product.completed_date !== null ? product.completed_date : null,
-                            dimension: {
+                            dimension: product.productDimension ? {
                                 length: product.productDimension.length,
                                 width: product.productDimension.width,
                                 height: product.productDimension.height
-                            }
+                            } : null
                         }
                     })
                 
