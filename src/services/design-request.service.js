@@ -17,12 +17,12 @@ const queryListDesignRequest = async(queryOptions) => {
                 {
                     model: Order,
                     as: 'designRequestsOrder',
-                    attributes: ['name'],
+                    // attributes: ['name'],
                 },
                 {
                     model: Product,
                     as: 'designRequestProduct',
-                    attributes: ['name']
+                    // attributes: ['name']
                 },
                 {
                     model: Customer,

@@ -74,14 +74,14 @@ const queryBoms = async(queryOptions) => {
                 {
                     model: Product,
                     as: 'bomProduct',
-                    attributes: ['name'],
+                    // attributes: ['name'],
                     required: false, // inner join nếu có điều kiện
                     where: Object.keys(productWhere).length ? productWhere : undefined,
                 },
                 {
                     model: Order,
                     as: 'bomsOrder',
-                    attributes: ['name'],
+                    // attributes: ['name'],
                     required: false, // ✅ inner join nếu có điều kiện
                     where: Object.keys(orderWhere).length ? orderWhere : undefined,
                 },
