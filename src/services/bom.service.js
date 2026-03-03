@@ -103,8 +103,8 @@ const queryBoms = async(queryOptions) => {
                 id: newBom.id,
                 code: newBom.code,
                 amount: newBom.amount,
-                nameProduct: newBom.bomProduct.name ? newBom.bomProduct.name : null,
-                nameOrder: newBom.bomsOrder.name ? newBom.bomsOrder.name : null,
+                nameProduct: newBom.bomProduct.name ?? null,
+                nameOrder: newBom.bomsOrder.name ?? null,
                 user: newBom.bomsUser ? {
                     id: newBom.bomsUser.id,
                     fullName: newBom.bomsUser.full_name

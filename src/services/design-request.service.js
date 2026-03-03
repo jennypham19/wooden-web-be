@@ -45,11 +45,11 @@ const queryListDesignRequest = async(queryOptions) => {
             const newDesignRequest = designRequest.toJSON();
             return{
                 id: newDesignRequest.id,
-                requestCode: newDesignRequest.request_code ? newDesignRequest.request_code : null,
-                productName: newDesignRequest.designRequestProduct.name ? newDesignRequest.designRequestProduct.name : null,
-                orderName: newDesignRequest.designRequestsOrder.name ? newDesignRequest.designRequestsOrder.name : null,
-                customerName: newDesignRequest.designRequestCustomer.name ? newDesignRequest.designRequestCustomer.name : null,
-                curatorName: newDesignRequest.designRequestUser.full_name ? newDesignRequest.designRequestUser.full_name : null,
+                requestCode: newDesignRequest.request_code ?? null,
+                productName: newDesignRequest.designRequestProduct.name ?? null,
+                orderName: newDesignRequest.designRequestsOrder.name ?? null,
+                customerName: newDesignRequest.designRequestCustomer.name ?? null,
+                curatorName: newDesignRequest.designRequestUser.full_name ?? null,
                 status: newDesignRequest.status,
                 dueDate: newDesignRequest.due_date,
                 completedDate: newDesignRequest.completed_date,
