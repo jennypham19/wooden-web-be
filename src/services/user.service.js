@@ -239,7 +239,7 @@ const mapPermissionByTree = (userRole) => {
                         id: menu.id,
                         code: menu.code,
                         name: menu.name,
-                        path: menu.path,
+                        path: `/moc` + menu.path,
                         icon: menu.icon
                     };
                     const menuActions = (actionByMenu[menu.id] || []).map((act) => ({
