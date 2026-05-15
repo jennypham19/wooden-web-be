@@ -46,6 +46,10 @@ module.exports = (sequelize, DataTypes) => {
             Order.hasMany(models.IssueReport, {
                 foreignKey: 'order_id',
                 as: 'orderIssueReport'
+            }),
+            Order.belongsTo(models.User, {
+                foreignKey: 'manager_id',
+                as: 'orderManagers'
             })
         }
     }
@@ -131,7 +135,12 @@ module.exports = (sequelize, DataTypes) => {
         feedback_status: {
             type: DataTypes.STRING,
             allowNull: true
-        }
+        },
+        // Cột manager_id: UUID, khóa phụ bảng Users
+        manager_id: {
+            type: DataTypes.UUID,
+            allowNull: true
+        },
     }, {
         sequelize,
         modelName: 'Order'
