@@ -1,14 +1,7 @@
 const Joi = require('joi');
 const createOrder = {
     body: Joi.object().keys({
-        customerId: Joi.string().required().messages({
-           'string.empty': 'Khách hàng không được để trống',
-           'any.required': 'Khách hàng là trường bắt buộc' 
-        }),
-        codeOrder: Joi.string().required().messages({
-            'string.empty': 'Mã đơn hàng không được để trống',
-            'any.required': 'Mã đơn hàng là trường bắt buộc'
-        }),
+        codeOrder: Joi.string().required().optional(),
         name: Joi.string().required().messages({
             'string.empty': 'Tên đơn hàng không được để trống',
             'any.required': 'Tên khách hàng là trường bắt buộc'
@@ -25,16 +18,47 @@ const createOrder = {
             'string.empty': 'Số lượng không được để trống',
             'any.required': 'Số lượng là trường bắt buộc'
         }),
-        requiredNote: Joi.string().required().messages({
-            'string.empty': 'Yêu cầu không được để trống',
-            'any.required': 'Yêu cầu là trường bắt buộc'
-        }),
+        requiredNote: Joi.string().optional().allow('', null),
         proccess: Joi.string().optional(),
         status: Joi.string().optional(),
         inputFiles: Joi.array().optional(),
         referenceLinks: Joi.array().optional(),
         products: Joi.array().optional(),
-        createdBy: Joi.string().required()
+        createdBy: Joi.string().required(),
+        internalNote: Joi.string().optional().allow('', null),
+        typeCustomer: Joi.string().valid('new', 'old').required(), // Nếu typeCustomer là 'new' thì customer là object, ngược lại là string (customerId)
+        managerId: Joi.string().required(),
+        customer: Joi.alternatives().conditional('typeCustomer', {
+            is: 'new',
+            then: Joi.object({
+                name: Joi.string().required().messages({
+                    'string.empty': 'Tên khách hàng không được để trống',
+                    'any.required': 'Tên khách hàng là trường bắt buộc'
+                }),
+                phone: Joi.string().required().messages({
+                    'string.empty': 'Số điện thoại không được để trống',
+                    'any.required': 'Số điện thoại là trường bắt buộc'
+                }),
+                address: Joi.string().required().messages({
+                    'string.empty': 'Địa chỉ không được để trống',
+                    'any.required': 'Địa chỉ là trường bắt buộc'
+                }),
+                type: Joi.string().required().messages({
+                    'string.empty': 'Loại khách hàng không được để trống',
+                    'any.required': 'Loại khách hàng là trường bắt buộc'
+                })
+            }).required(),
+            otherwise: Joi.object({
+                id: Joi.string().required(),
+                name: Joi.string().required(),
+                phone: Joi.string().required(),
+                address: Joi.string().required(),
+                type: Joi.string().required(),
+                amountOfOrders: Joi.number().integer().optional(),
+                createdAt: Joi.string().optional(),
+                updatedAt: Joi.string().optional()
+            }).required()
+        })
     })
 }
 

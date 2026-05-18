@@ -116,8 +116,8 @@ const createDesignRequest = async(designRequestBody) => {
         }
         
         await orderDB.update({
-            status: 'in_progress',
-            proccess: 'in_progress_25%'
+            status: 'pending',
+            proccess: 'not_started_0%'
         }, { transaction })
         
         await transaction.commit();

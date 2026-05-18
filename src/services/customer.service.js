@@ -50,6 +50,7 @@ const queryListCustomers = async (queryOptions) => {
                 phone: newCustomer.phone,
                 address: newCustomer.address,
                 amountOfOrders: newCustomer.amount_of_orders,
+                type: newCustomer.type,
                 createdAt: newCustomer.createdAt,
                 updatedAt: newCustomer.updatedAt
             }

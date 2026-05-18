@@ -46,6 +46,10 @@ module.exports = (sequelize, DataTypes) => {
             Order.hasMany(models.IssueReport, {
                 foreignKey: 'order_id',
                 as: 'orderIssueReport'
+            }),
+            Order.belongsTo(models.User, {
+                foreignKey: 'manager_id',
+                as: 'orderManagers'
             })
         }
     }
@@ -105,10 +109,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER,
             allowNull: false
         },
-        // Cột required_note: yêu cầu của đơn hàng, kiểu text
+        // Cột required_note: yêu cầu của khách về đơn hàng, kiểu text
         required_note: {
             type: DataTypes.TEXT,
-            allowNull: false
+            allowNull: true
         },
         // Cột is_created_work: trạng thái của đơn hàng khi đã được tạo công việc
         is_created_work: {
@@ -130,6 +134,16 @@ module.exports = (sequelize, DataTypes) => {
         },
         feedback_status: {
             type: DataTypes.STRING,
+            allowNull: true
+        },
+        // Cột manager_id: UUID, khóa phụ bảng Users
+        manager_id: {
+            type: DataTypes.UUID,
+            allowNull: true
+        },
+        // Cột internal_note: ghi chú nội bộ của đơn hàng, kiểu text
+        internal_note: {
+            type: DataTypes.TEXT,
             allowNull: true
         }
     }, {

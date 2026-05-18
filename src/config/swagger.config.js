@@ -20,7 +20,7 @@ const swaggerDefinitionObject = { // Đổi tên để tránh nhầm lẫn với
     },
     servers: [
         {
-            url: `http://localhost:${config.port || process.env.PORT || 3002}/api/v1`,
+            url: `http://localhost:${config.port || process.env.PORT || 3003}/api/v1`,
             description: 'Development server (1)',
         },
     ],

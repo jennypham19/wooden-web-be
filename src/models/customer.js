@@ -38,9 +38,9 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false,
         },
-        // Cột address: địa chỉ quê quán của user, kiểu chuỗi, không null
+        // Cột address: địa chỉ quê quán của user, kiểu văn bản, không null
         address: {
-            type: DataTypes.STRING,
+            type: DataTypes.TEXT,
             allowNull: false
         },
         // Cột amount_of_orders: số lượng đơn hàng của khách hàng, kiểu số, không null
@@ -48,6 +48,16 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER,
             allowNull: false,
             defaultValue: 0
+        },
+        // Cột type: loại địa chỉ của khách hàng, kiểu chuỗi, có thể null
+        type: {
+            type: DataTypes.STRING,
+            allowNull: false // office: cơ quan, home: nhà riêng
+        },
+        // Cột required_note: ghi chú yêu cầu của khách hàng, kiểu văn bản, có thể null
+        required_note: {
+            type: DataTypes.TEXT,
+            allowNull: true
         }
     }, {
         sequelize,

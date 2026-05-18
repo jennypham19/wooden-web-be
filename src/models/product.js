@@ -58,7 +58,7 @@ module.exports = (sequelize, DataTypes) => {
         // Cột manager_id: UUID, khóa phụ bảng Users
         manager_id: {
             type: DataTypes.UUID,
-            allowNull: false
+            allowNull: true
         },
         // Cột name: tên sản phẩm, kiểu chuỗi, không null
         name: {

@@ -16,7 +16,11 @@ const queryProductsByOrderId = async(orderId) => {
         const productsDB = await Product.findAll({
             where: { order_id: orderId },
             include: [
-                { model: User, as: 'productsUser' },
+                { 
+                    model: Order, 
+                    as: 'productsOrder',
+                    include: [{ model: User, as: 'orderManagers' }] 
+                },
                 { model: DimensionProduct, as: 'productDimension' }
             ]
         });
@@ -30,9 +34,9 @@ const queryProductsByOrderId = async(orderId) => {
                 proccess: newProduct.proccess,
                 status: newProduct.status,
                 manager: {
-                    fullName: newProduct.productsUser.full_name,
-                    role: newProduct.productsUser.role,
-                    phone: newProduct.productsUser.phone
+                    fullName: newProduct.productsOrder.orderManagers.full_name !== null ? newProduct.productsOrder.orderManagers.full_name : null,
+                    role: newProduct.productsOrder.orderManagers.role !== null ? newProduct.productsOrder.orderManagers.role : null,
+                    phone: newProduct.productsOrder.orderManagers.phone !== null ? newProduct.productsOrder.orderManagers.phone : null
                 },
                 isCreated: newProduct.is_created,
                 createdAt: newProduct.createdAt,
@@ -65,7 +69,7 @@ const queryProductsByOrderIdAndStatus = async(orderId) => {
         const productsDB = await Product.findAll({
             where: { order_id: orderId, is_created: false },
             include: [
-                { model: User, as: 'productsUser' },
+                { model: Order, as: 'productsOrder', include: [{ model: User, as: 'orderManagers' }] },
                 { model: DimensionProduct, as: 'productDimension' }
             ]
         });
@@ -79,9 +83,9 @@ const queryProductsByOrderIdAndStatus = async(orderId) => {
                 proccess: newProduct.proccess,
                 status: newProduct.status,
                 manager: {
-                    fullName: newProduct.productsUser.full_name,
-                    role: newProduct.productsUser.role,
-                    phone: newProduct.productsUser.phone
+                    fullName: newProduct.productsOrder.orderManagers.full_name !== null ? newProduct.productsOrder.orderManagers.full_name : null,
+                    role: newProduct.productsOrder.orderManagers.role !== null ? newProduct.productsOrder.orderManagers.role : null,
+                    phone: newProduct.productsOrder.orderManagers.phone !== null ? newProduct.productsOrder.orderManagers.phone : null
                 },
                 isCreated: newProduct.is_created,
                 createdAt: newProduct.createdAt,
@@ -217,7 +221,7 @@ const updateImageAndStatusProduct = async(id, productBody) => {
         const orderDB = await Order.findOne({
             where: { id: productDB.order_id }
         }, { transaction });
-        orderDB.proccess = 'in_progress_50%'
+        orderDB.proccess = 'in_progress_75%'
         await orderDB.save({ transaction })
         await transaction.commit()
     } catch (error) {
@@ -358,13 +362,13 @@ const sendEvaluationWorkOrder = async(id, evaluationWorkOrderBody) => {
         workOrderDB.evaluation_description = evaluationDescriptionWorkOrder;
         workOrderDB.save({ transaction });
 
-        // // 2. Update proccess trong bảng Orders
-        // const orderDB = await Order.findOne({ where: { id: workOrderDB.order_id} }, { transaction });
-        // if(!orderDB){
-        //     throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại đơn hàng nào.")
-        // }
-        // orderDB.proccess = 'in_progress_75%'
-        // orderDB.save({ transaction });
+        // 2. Update proccess trong bảng Orders
+        const orderDB = await Order.findOne({ where: { id: workOrderDB.order_id} }, { transaction });
+        if(!orderDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại đơn hàng nào.")
+        }
+        orderDB.proccess = 'in_progress_50%'
+        orderDB.save({ transaction });
 
         // 3. Insert trong bảng WorkOrderChangeLogs
         await WorkOrderChangeLog.create({
