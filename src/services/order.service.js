@@ -8,10 +8,21 @@ const { FormatDate } = require('../utils/DateTime');
 const createOrder = async(orderBody) => {
     const transaction = await sequelize.transaction();
     try {
-        const { customerId, codeOrder, name, dateOfReceipt, dateOfPayment, proccess, status, amount, requiredNote, products, inputFiles, referenceLinks, createdBy } = orderBody;
+        // const { customerId, codeOrder, name, dateOfReceipt, dateOfPayment, proccess, status, amount, requiredNote, products, inputFiles, referenceLinks, createdBy } = orderBody;
+        const { amount, createdBy, customer, dateOfPayment, dateOfReceipt, inputFiles, internalNote, managerId, name, proccess, products, referenceLinks, requiredNote, status, typeCustomer } = orderBody;
+        // 1. Trường hợp typeCustomer = 'new' thì tạo mới customer, ngược lại lấy customer hiện tại
+        let customerId;
+        if(typeCustomer === 'new'){
+            const newCustomer = await Customer.create({ name: customer.name, phone: customer.phone, address: customer.address, type: customer.type }, { transaction });
+            customerId = newCustomer.id;
+        } else {
+            customerId = customer.id;
+        }
+
+        // 2. Tạo mới order
         const order = await Order.create({
             customer_id: customerId,
-            code_order: codeOrder,
+            code_order: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
             name,
             date_of_receipt: dateOfReceipt,
             date_of_payment: dateOfPayment,
@@ -19,7 +30,9 @@ const createOrder = async(orderBody) => {
             status,
             amount,
             required_note: requiredNote,
-            created_by: createdBy
+            internal_note: internalNote,
+            created_by: createdBy,
+            manager_id: managerId
         }, { transaction })
 
         // Lưu sản phẩm
@@ -121,6 +134,7 @@ const queryOrders = async(queryOptions) => {
                 status: newOrder.status,
                 amount: newOrder.amount,
                 requiredNote: newOrder.required_note,
+                internalNote: newOrder.internal_note,
                 createdAt: newOrder.createdAt,
                 updatedAt: newOrder.updatedAt,
                 isCreatedWork: newOrder.is_created_work,
@@ -179,7 +193,6 @@ const getDetailOrder = async(id) => {
                     model: Product,
                     as: 'orderProducts',
                     include: [
-                        { model: User, as: 'productsUser' },
                         { model: DimensionProduct, as: 'productDimension' }
                     ]
                 },
@@ -192,6 +205,10 @@ const getDetailOrder = async(id) => {
                     model: OrderReferenceLink,
                     as: 'orderReferenceLinks',
                     include: [{ model: ReferenceLink, as: 'referenceLinks' }]
+                },
+                {
+                    model: User,
+                    as: 'orderManagers'
                 }
             ]
         });
@@ -215,6 +232,11 @@ const getDetailOrder = async(id) => {
             isCreatedWork: newOrder.is_created_work,
             createdBy: newOrder.created_by,
             reason: newOrder.reason,
+            manager: {
+                fullName: newOrder.orderManagers.full_name !== null ? newOrder.orderManagers.full_name : null,
+                role: newOrder.orderManagers.role !== null ? newOrder.orderManagers.role : null,
+                phone: newOrder.orderManagers.phone !== null ? newOrder.orderManagers.phone : null
+            },
             products: (newOrder.orderProducts ?? [])
                 .filter((el) => el.order_id === newOrder.id)
                 .map((product) => {
@@ -226,11 +248,6 @@ const getDetailOrder = async(id) => {
                         proccess: product.proccess,
                         status: product.status,
                         isCreated: product.is_created,
-                        manager: {
-                            fullName: product.productsUser.full_name,
-                            role: product.productsUser.role,
-                            phone: product.productsUser.phone
-                        },
                         nameImage: product.name_image !== null ? product.name_image : null,
                         urlImage: product.url_image !== null ? product.url_image : null,
                         isEvaluated: product.is_evaluated,
@@ -330,7 +347,6 @@ const queryOrdersByCarpenterId = async(queryOptions) => {
                     model: Product,
                     as: 'orderProducts',
                     include: [
-                        { model: User, as: 'productsUser' },
                         { model: DimensionProduct, as: 'productDimension' }
                     ]
                 },
@@ -346,6 +362,10 @@ const queryOrdersByCarpenterId = async(queryOptions) => {
                             where: { worker_id: id }
                         }
                     ]
+                },
+                {
+                    model: User,
+                    as: 'orderManagers'
                 }
             ],
             limit,
@@ -387,9 +407,9 @@ const queryOrdersByCarpenterId = async(queryOptions) => {
                             status: product.status,
                             isCreated: product.is_created,
                             manager: {
-                                fullName: product.productsUser.full_name,
-                                role: product.productsUser.role,
-                                phone: product.productsUser.phone
+                                fullName: newOrder.orderManagers.full_name !== null ? newOrder.orderManagers.full_name : null,
+                                role: newOrder.orderManagers.role !== null ? newOrder.orderManagers.role : null,
+                                phone: newOrder.orderManagers.phone !== null ? newOrder.orderManagers.phone : null
                             },
                             nameImage: product.name_image !== null ? product.name_image : null,
                             urlImage: product.url_image !== null ? product.url_image : null,
@@ -592,6 +612,7 @@ const updateProccessOrder = async(id, body) => {
             throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi nào.")
         }
         orderDB.proccess = proccess
+        orderDB.status = 'completed'
         await orderDB.save();
     } catch (error) {
         if(error instanceof ApiError) throw error;
@@ -670,7 +691,6 @@ const queryOrdersWithProccess = async(queryOptions) => {
                     model: Product,
                     as: 'orderProducts',
                     include: [
-                        { model: User, as: 'productsUser' },
                         { model: ProductReview, as: 'productReview' },
                         { model: DimensionProduct, as: 'productDimension' }
                     ]
@@ -678,6 +698,10 @@ const queryOrdersWithProccess = async(queryOptions) => {
                 {
                     model: User,
                     as: 'orderCreatedBy'
+                },
+                {
+                    model: User,
+                    as: 'orderManagers'
                 }
             ],
             limit,
@@ -718,9 +742,9 @@ const queryOrdersWithProccess = async(queryOptions) => {
                             process: product.proccess,
                             status: product.status,
                             manager: {
-                                fullName: product.productsUser.full_name,
-                                role: product.productsUser.role,
-                                phone: product.productsUser.phone
+                                fullName: newOrder.orderManagers.full_name !== null ? newOrder.orderManagers.full_name : null,
+                                role: newOrder.orderManagers.role !== null ? newOrder.orderManagers.role : null,
+                                phone: newOrder.orderManagers.phone !== null ? newOrder.orderManagers.phone : null
                             },
                             nameImage: product.name_image !== null ? product.name_image : null,
                             urlImage: product.url_image !== null ? product.url_image : null,
@@ -752,7 +776,7 @@ const queryOrdersByIdManager = async(queryOptions) => {
     try {
         const { page, limit, searchTerm, status, id } = queryOptions;
         const offset = (page - 1) * limit;
-        const whereClause = {};
+        const whereClause = { manager_id: id };
         if(status && status !== 'all'){
             whereClause.status = status;
         }
@@ -772,15 +796,17 @@ const queryOrdersByIdManager = async(queryOptions) => {
                 {
                     model: Product,
                     as: 'orderProducts',
-                    where: { manager_id: id },
                     include: [
-                        { model: User, as: 'productsUser' },
                         { model: DimensionProduct, as: 'productDimension' }
                     ]
                 },
                 {
                     model: User,
                     as: 'orderCreatedBy'
+                },
+                {
+                    model: User,
+                    as: 'orderManagers'
                 }
             ],
             limit,
@@ -810,6 +836,11 @@ const queryOrdersByIdManager = async(queryOptions) => {
                 isCreatedWork: newOrder.is_created_work,
                 createdBy: newOrder.created_by,
                 reason: newOrder.reason,
+                manager: {
+                    fullName: newOrder.orderManagers.full_name,
+                    role: newOrder.orderManagers.role,
+                    phone: newOrder.orderManagers.phone
+                },
                 products: (newOrder.orderProducts ?? [])
                     .filter((el) => el.order_id === newOrder.id)
                     .map((product) => {
@@ -820,11 +851,6 @@ const queryOrdersByIdManager = async(queryOptions) => {
                             target: product.target,
                             process: product.proccess,
                             status: product.status,
-                            manager: {
-                                fullName: product.productsUser.full_name,
-                                role: product.productsUser.role,
-                                phone: product.productsUser.phone
-                            },
                             nameImage: product.name_image !== null ? product.name_image : null,
                             urlImage: product.url_image !== null ? product.url_image : null,
                             isEvaluated: product.is_evaluated,
@@ -855,7 +881,7 @@ const queryOrdersWithWorkByIdManager = async(queryOptions) => {
     try {
         const { page, limit, searchTerm, status, id } = queryOptions;
         const offset = (page - 1) * limit;
-        const whereClause = {};
+        const whereClause = { manager_id: id };
         const whereWork = {};
         if(searchTerm){
             whereClause[Op.or] = [
@@ -877,10 +903,8 @@ const queryOrdersWithWorkByIdManager = async(queryOptions) => {
                 {
                     model: Product,
                     as: 'orderProducts',
-                    where: { manager_id: id },
                     required: true,
                     include: [
-                        { model: User, as: 'productsUser' },
                         { 
                             model: WorkOrder, 
                             as: 'productWorkOrder', 
@@ -893,6 +917,10 @@ const queryOrdersWithWorkByIdManager = async(queryOptions) => {
                 {
                     model: User,
                     as: 'orderCreatedBy'
+                },
+                {
+                    model: User,
+                    as: 'orderManagers'
                 }
             ],
             limit,
@@ -933,9 +961,9 @@ const queryOrdersWithWorkByIdManager = async(queryOptions) => {
                             process: product.proccess,
                             status: product.status,
                             manager: {
-                                fullName: product.productsUser.full_name,
-                                role: product.productsUser.role,
-                                phone: product.productsUser.phone
+                                fullName: newOrder.orderManagers.full_name !== null ? newOrder.orderManagers.full_name : null,
+                                role: newOrder.orderManagers.role !== null ? newOrder.orderManagers.role : null,
+                                phone: newOrder.orderManagers.phone !== null ? newOrder.orderManagers.phone : null
                             },
                             nameImage: product.name_image !== null ? product.name_image : null,
                             urlImage: product.url_image !== null ? product.url_image : null,

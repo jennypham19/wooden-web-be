@@ -109,10 +109,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER,
             allowNull: false
         },
-        // Cột required_note: yêu cầu của đơn hàng, kiểu text
+        // Cột required_note: yêu cầu của khách về đơn hàng, kiểu text
         required_note: {
             type: DataTypes.TEXT,
-            allowNull: false
+            allowNull: true
         },
         // Cột is_created_work: trạng thái của đơn hàng khi đã được tạo công việc
         is_created_work: {
@@ -141,6 +141,11 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.UUID,
             allowNull: true
         },
+        // Cột internal_note: ghi chú nội bộ của đơn hàng, kiểu text
+        internal_note: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        }
     }, {
         sequelize,
         modelName: 'Order'
