@@ -5,7 +5,58 @@ const { Op } = require('sequelize');
 const { getLabelEvaluatedStatus } = require('../utils/labelFromEnToVi');
 const orderService = require('./order.service')
 
+// Lấy danh sách sản phẩm (hình ảnh sản phẩm, mốc công viêc) theo id đơn hàng
+const queryListProductsByOrderId = async(orderId) => {
+    try {
+        const order = await Order.findByPk(orderId);
+        if(!order){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại đơn hàng");
+        }
+        const productsDB = await Product.findAll({
+            where: { order_id: orderId },
+            include: [
+                { model: DimensionProduct, as: 'productDimension' },
+            ]
+        });
+        for(const product of productsDB){
+            const workOrderByProductDB = await getDetailWorkOrderByProduct(product.id);
+            // Gán mốc công việc vào từng sản phẩm
+            if(workOrderByProductDB){
+                product.dataValues.workOrder = workOrderByProductDB;
+            }
+        }
 
+        const products = productsDB.map((product) => {
+            const newProduct = product.toJSON();
+            return{
+                id: newProduct.id,
+                name: newProduct.name,
+                description: newProduct.description,
+                target: newProduct.target,
+                proccess: newProduct.proccess,
+                status: newProduct.status,
+                isCreated: newProduct.is_created,
+                createdAt: newProduct.createdAt,
+                updatedAt: newProduct.updatedAt,
+                nameImage: newProduct.name_image !== null ? newProduct.name_image : null,
+                urlImage: newProduct.url_image !== null ? newProduct.url_image : null,
+                isEvaluated: newProduct.is_evaluated,
+                completedDate: newProduct.completed_date !== null ? newProduct.completed_date : null,
+                dimension: {
+                    length: newProduct.productDimension.length,
+                    width: newProduct.productDimension.width,
+                    height: newProduct.productDimension.height
+                },
+                workOrder: newProduct.workOrder
+            }
+        });
+
+        return products;
+    } catch (error) {
+        if(error instanceof ApiError) throw error;
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
 // Lấy danh sách sản phẩm theo id đơn hàng
 const queryProductsByOrderId = async(orderId) => {
     try {
@@ -24,6 +75,13 @@ const queryProductsByOrderId = async(orderId) => {
                 { model: DimensionProduct, as: 'productDimension' }
             ]
         });
+        for(const product of productsDB){
+            const workOrderByProductDB = await getDetailWorkOrderByProduct(product.id);
+            // Gán mốc công việc vào từng sản phẩm
+            if(workOrderByProductDB){
+                product.dataValues.workOrder = workOrderByProductDB;
+            }
+        }
         const products = productsDB.map((product) => {
             const newProduct = product.toJSON();
             return{
@@ -49,7 +107,8 @@ const queryProductsByOrderId = async(orderId) => {
                     length: newProduct.productDimension.length,
                     width: newProduct.productDimension.width,
                     height: newProduct.productDimension.height
-                }
+                },
+                workOrder: newProduct.workOrder
             }
         });
         return products;
@@ -602,6 +661,31 @@ const getCompletedProducts = async(queryOptions) => {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
 }
+
+// Lấy các bước theo id mốc công việc
+const queryListStepsByIdWorkMilestone = async(idWorkMilestone) => {
+    try {
+        const stepDB = await Step.findAll({
+            where: { work_milestone_id: idWorkMilestone },
+            include: [{ model: ImageStep, as: 'stepImageSteps' }]
+        })
+        const steps = stepDB.map((step) => {
+            const newStep = step.toJSON(); 
+            return {
+                id: newStep.id,
+                name: newStep.name,
+                proccess: newStep.proccess,
+                progress: newStep.progress,
+                createdAt: newStep.createdAt,
+                updatedAt: newStep.updatedAt,
+                images: newStep.stepImageSteps
+            }
+        })
+        return steps;
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
 module.exports = {
     queryProductsByOrderId,
     queryProductsByOrderIdAndStatus,
@@ -612,5 +696,7 @@ module.exports = {
     sendEvaluationWorkOrder,
     evaluationProduct,
     getDataEvaluationProduct,
-    getCompletedProducts
+    getCompletedProducts,
+    queryListProductsByOrderId,
+    queryListStepsByIdWorkMilestone
 }

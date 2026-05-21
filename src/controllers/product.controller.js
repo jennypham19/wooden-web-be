@@ -10,6 +10,13 @@ const queryProductsByOrderId = catchAsync(async(req, res) => {
     res.status(StatusCodes.OK).send({ success: true, message: 'Lấy danh sách sản phẩm thành công', data: products })
 })
 
+// Lấy danh sách sản phẩm theo đơn hàng (công việc, hình ảnh sản phẩm)
+const queryListProductsByOrderId = catchAsync(async(req, res) => {
+    const orderId = req.params.id;
+    const products = await productService.queryListProductsByOrderId(orderId);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Lấy danh sách sản phẩm thành công', data: products })
+})
+
 // Lấy danh sách sản phẩm theo đơn hàng và trạng thái
 const queryProductsByOrderIdAndStatus = catchAsync(async(req, res) => {
     const orderId = req.params.id;
@@ -67,6 +74,12 @@ const getCompletedProducts = catchAsync(async(req, res) => {
     res.status(StatusCodes.OK).send({ success: true, message: 'Lấy danh sách thành công', data: completedProducts })
 })
 
+// Lấy các bước theo id mốc công việc
+const getListStepsByIdWorkMilestone = catchAsync(async(req, res) => {
+    const steps = await productService.queryListStepsByIdWorkMilestone(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Lấy danh sách các bước thành công.', data: steps})
+})
+
 module.exports = {
     queryProductsByOrderId,
     queryProductsByOrderIdAndStatus,
@@ -77,5 +90,7 @@ module.exports = {
     sendEvaluationWorkOrder,
     evaluationProduct,
     getDataProductReview,
-    getCompletedProducts
+    getCompletedProducts,
+    queryListProductsByOrderId,
+    getListStepsByIdWorkMilestone
 }

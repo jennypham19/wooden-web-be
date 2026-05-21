@@ -3,6 +3,7 @@ const { Order, Customer, Product, User, BOM, sequelize, OrderInputFile, OrderRef
 const ApiError = require('../utils/ApiError');
 const { Op } = require('sequelize');
 const { FormatDate } = require('../utils/DateTime');
+const baseService = require('./base.service');
 
 /* ------------- Tạo đơn hàng -------------- */
 const createOrder = async(orderBody) => {
@@ -925,11 +926,14 @@ const queryOrdersWithWorkByIdManager = async(queryOptions) => {
             ],
             limit,
             offset,
-            order: [[ 'createdAt', 'DESC']],
+            order: [
+                [ 'createdAt', 'DESC'],
+            ],
             distinct: true
         });
         const totalPages = Math.ceil(count/limit);
-        const orders = ordersDB.map((order) => {
+        const orders = await Promise.all(
+            ordersDB.map(async(order) => {
             const newOrder = order.toJSON();
             return {
                 id: newOrder.id,
@@ -950,35 +954,82 @@ const queryOrdersWithWorkByIdManager = async(queryOptions) => {
                 isCreatedWork: newOrder.is_created_work,
                 createdBy: newOrder.created_by,
                 reason: newOrder.reason,
-                products: (newOrder.orderProducts ?? [])
-                    .filter((el) => el.order_id === newOrder.id)
-                    .map((product) => {
-                        return {
-                            id: product.id,
-                            name: product.name,
-                            description: product.description,
-                            target: product.target,
-                            process: product.proccess,
-                            status: product.status,
-                            manager: {
-                                fullName: newOrder.orderManagers.full_name !== null ? newOrder.orderManagers.full_name : null,
-                                role: newOrder.orderManagers.role !== null ? newOrder.orderManagers.role : null,
-                                phone: newOrder.orderManagers.phone !== null ? newOrder.orderManagers.phone : null
-                            },
-                            nameImage: product.name_image !== null ? product.name_image : null,
-                            urlImage: product.url_image !== null ? product.url_image : null,
-                            isEvaluated: product.is_evaluated,
-                            completedDate: product.completed_date !== null ? product.completed_date : null,
-                            dimension: {
-                                length: product.productDimension.length,
-                                width: product.productDimension.width,
-                                height: product.productDimension.height
+                products: await Promise.all(
+                    (newOrder.orderProducts ?? [])
+                        .filter((el) => el.order_id === newOrder.id)
+                        .map(async(product) => {
+                            const workMilestones = await baseService.getWorkMilestonesAndSteps(product.productWorkOrder.id);
+                            return {
+                                id: product.id,
+                                name: product.name,
+                                description: product.description,
+                                target: product.target,
+                                process: product.proccess,
+                                status: product.status,
+                                manager: {
+                                    fullName: newOrder.orderManagers.full_name !== null ? newOrder.orderManagers.full_name : null,
+                                    role: newOrder.orderManagers.role !== null ? newOrder.orderManagers.role : null,
+                                    phone: newOrder.orderManagers.phone !== null ? newOrder.orderManagers.phone : null
+                                },
+                                nameImage: product.name_image !== null ? product.name_image : null,
+                                urlImage: product.url_image !== null ? product.url_image : null,
+                                isEvaluated: product.is_evaluated,
+                                completedDate: product.completed_date !== null ? product.completed_date : null,
+                                dimension: {
+                                    length: product.productDimension.length,
+                                    width: product.productDimension.width,
+                                    height: product.productDimension.height
+                                },
+                                workOrder: {
+                                    id: product.productWorkOrder.id,
+                                    workMilestone: product.productWorkOrder.work_milestone,
+                                    evaluatedStatus: product.productWorkOrder.evaluated_status,
+                                    evaluationDescriptionWorkOrder: product.productWorkOrder.evaluation_description,
+                                    createdAt: product.productWorkOrder.createdAt,
+                                    updatedAt: product.productWorkOrder.updatedAt, 
+                                    workMilestones
+                                }
                             }
-                        }
-                    })
+                        })
+                )
+                // products: (newOrder.orderProducts ?? [])
+                //     .filter((el) => el.order_id === newOrder.id)
+                //     .map((product) => {
+                //         return {
+                //             id: product.id,
+                //             name: product.name,
+                //             description: product.description,
+                //             target: product.target,
+                //             process: product.proccess,
+                //             status: product.status,
+                //             manager: {
+                //                 fullName: newOrder.orderManagers.full_name !== null ? newOrder.orderManagers.full_name : null,
+                //                 role: newOrder.orderManagers.role !== null ? newOrder.orderManagers.role : null,
+                //                 phone: newOrder.orderManagers.phone !== null ? newOrder.orderManagers.phone : null
+                //             },
+                //             nameImage: product.name_image !== null ? product.name_image : null,
+                //             urlImage: product.url_image !== null ? product.url_image : null,
+                //             isEvaluated: product.is_evaluated,
+                //             completedDate: product.completed_date !== null ? product.completed_date : null,
+                //             dimension: {
+                //                 length: product.productDimension.length,
+                //                 width: product.productDimension.width,
+                //                 height: product.productDimension.height
+                //             },
+                //             workOrder: {
+                //                 id: product.productWorkOrder.id,
+                //                 workMilestone: product.productWorkOrder.work_milestone,
+                //                 evaluatedStatus: product.productWorkOrder.evaluated_status,
+                //                 evaluationDescriptionWorkOrder: product.productWorkOrder.evaluation_description,
+                //                 createdAt: product.productWorkOrder.createdAt,
+                //                 updatedAt: product.productWorkOrder.updatedAt, 
+                //             }
+                //         }
+                //     })
                 
             }
         })
+        )
         return{
             data: orders,
             totalPages,
