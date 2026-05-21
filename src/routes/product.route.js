@@ -16,6 +16,14 @@ router.get(
     productController.queryProductsByOrderId
 )
 
+// Lấy danh sách sản phẩm theo đơn hàng
+router.get(
+    '/get-list-products-by-order/:id',
+    authorize('technical_design', 'factory_manager', 'carpenter', 'employee'),
+    validate(productValidation.queryProducts),
+    productController.queryListProductsByOrderId
+)
+
 // Lấy danh sách sản phẩm theo đơn hàng và trạng thái
 router.get(
     '/products-by-order-and-status/:id',
@@ -80,4 +88,10 @@ router.get(
     productController.getCompletedProducts
 )
 
+/* Lấy các bước theo id mốc công việc */
+router.get(
+    '/list-step-by-id-workmilestone/:id',
+    validate(baseValidation.queryOption),
+    productController.getListStepsByIdWorkMilestone
+)
 module.exports = router;
