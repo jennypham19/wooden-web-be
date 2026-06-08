@@ -20,10 +20,9 @@ const queryListProductsByOrderId = async(orderId) => {
         });
         for(const product of productsDB){
             const workOrderByProductDB = await getDetailWorkOrderByProduct(product.id);
-            // Gán mốc công việc vào từng sản phẩm
-            if(workOrderByProductDB){
-                product.dataValues.workOrder = workOrderByProductDB;
-            }
+            // Gán mốc công việc vào từng sản phẩm, có thì gán, không có thì null
+            product.dataValues.workOrder = workOrderByProductDB || null;
+
         }
 
         const products = productsDB.map((product) => {
@@ -200,7 +199,8 @@ const getDetailWorkOrderByProduct = async(productId) => {
             ]
         });
         if(!workOrderByProductDB){
-            throw new ApiError(StatusCodes.NOT_FOUND, 'Sản phẩm chưa được tạo công việc. Vui lòng liên hệ quản lý')
+            // throw new ApiError(StatusCodes.NOT_FOUND, 'Sản phẩm chưa được tạo công việc. Vui lòng liên hệ quản lý')
+            return null;
         }
         const newWorkOrder = workOrderByProductDB.toJSON();
         const workOrderByProduct = {
