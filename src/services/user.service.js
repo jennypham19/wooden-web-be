@@ -361,7 +361,7 @@ const resetPasswordAccount = async(id) => {
   const plainPassword = crypto.randomBytes(6).toString('base64').slice(0,6);
   // Hash bằng bcrypt
   const hashedPassword = await bcrypt.hash(plainPassword, 10);
-  await user.update({ password: hashedPassword, is_default_type: -1, is_reset: true });
+  await user.update({ password: hashedPassword, is_reset: true });
   user.password = undefined; // Không trả về password
   const newUser = user.toJSON();
   const userReturn = {
