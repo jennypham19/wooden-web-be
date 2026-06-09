@@ -6,7 +6,7 @@ const validate = require('../middlewares/validate');
 
 const router = express.Router();
 
-router.use(protect, authorize('employee'));
+router.use(protect, authorize('employee', 'factory_manager'));
 
 // Tạo mới khách hàng
 router
