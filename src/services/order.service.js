@@ -290,7 +290,7 @@ const saveOrderWork = async(orderWorkBody) => {
                     worker_order_id: workOrder.id,
                     worker_id: worker.carpenterId
                 }, { transaction })
-                await User.update({ is_assigned: true }, { where: { id: worker.carpenterId }}, { transaction })
+                // await User.update({ is_assigned: true }, { where: { id: worker.carpenterId }}, { transaction })
             }
         }
         if(workMilestones.length > 0){
@@ -860,7 +860,8 @@ const queryOrdersByIdManager = async(queryOptions) => {
                                 length: product.productDimension.length,
                                 width: product.productDimension.width,
                                 height: product.productDimension.height
-                            }
+                            },
+                            isCreated: product.is_created
                         }
                     })
                 
