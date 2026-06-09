@@ -68,12 +68,12 @@ module.exports = (sequelize, DataTypes) => {
         // Cột description: mô tả sản phẩm, kiểu văn bản, không null
         description: {
             type: DataTypes.TEXT,
-            allowNull: false
+            allowNull: true
         },
         // Cột target: mục tiêu sản phẩm, kiểu văn bản, không null
         target: {
             type: DataTypes.TEXT,
-            allowNull: false
+            allowNull: true
         },
         // Cột proccess: tiến độ sản phẩm, kiểu chuỗi
         /* Các tiến độ

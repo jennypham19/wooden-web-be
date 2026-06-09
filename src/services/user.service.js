@@ -111,7 +111,6 @@ const queryListUser = async(queryOptions) => {
             where: { 
                 role: 'carpenter',
                 is_deleted: 1,
-                is_assigned: false
             },
             limit,
             offset,

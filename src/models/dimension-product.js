@@ -23,15 +23,15 @@ module.exports = (sequelize, DataTypes) => {
         },
         length: {
             type: DataTypes.INTEGER,
-            allowNull: false
+            allowNull: true
         },
         width: {
             type: DataTypes.INTEGER,
-            allowNull: false
+            allowNull: true
         },
         height: {
             type: DataTypes.INTEGER,
-            allowNull: false
+            allowNull: true
         },
     }, {
         sequelize,
