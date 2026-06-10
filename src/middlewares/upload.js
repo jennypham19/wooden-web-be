@@ -38,6 +38,8 @@ const storage = new CloudinaryStorage({
     if(ext === 'jfif'){
       ext = 'jpg'
     }
+
+    const uniqueId = uuidv4();
     // const baseName = path.parse(file.originalname).name.replace(/[^a-zA-Z0-9-_]/g, "_");
     const baseName = path.parse(correctName).name;
     
