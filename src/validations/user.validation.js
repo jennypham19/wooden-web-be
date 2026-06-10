@@ -2,6 +2,10 @@ const Joi = require('joi');
 
 const createUser = {
   body: Joi.object().keys({
+    account: Joi.string().required().messages({
+      'string.empty': 'Tên đăng nhập không được để trống.',
+      'any.required': 'Tên đăng nhập là trường bắt buộc.',
+    }),
     email: Joi.string().required().messages({
       'string.empty': 'Email không được để trống.',
       'any.required': 'Email là trường bắt buộc.',

@@ -98,6 +98,11 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false, 
             unique: true 
         },
+        // Cột account: tên đăng nhập của user, kiểu chuỗi
+        account: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
         // Cột password: mật khẩu của user, kiểu chuỗi, không null
         password: { 
             type: DataTypes.STRING, 

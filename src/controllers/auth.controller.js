@@ -6,8 +6,8 @@ const config = require('../config');
 const ApiError = require('../utils/ApiError');
 
 const login = catchAsync(async (req, res) => {
-    const { email, password } = req.body;
-    const user = await authService.loginWithEmailAndPassword(email, password);
+    const { account, password } = req.body;
+    const user = await authService.loginWithEmailAndPassword(account, password);
     const tokens = await tokenService.generateAuthTokens(user);
 
     //Gửi refreshToken qua cookie httpOnly để tăng cường bảo mật
