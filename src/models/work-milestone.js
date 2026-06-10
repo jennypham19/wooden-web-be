@@ -43,7 +43,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         target: {
             type: DataTypes.TEXT,
-            allowNull: false
+            allowNull: true
         },
         evaluated_status: {
             type: DataTypes.ENUM('not_reviewed', 'pending', 'rework', 'approved', 'overdue'),

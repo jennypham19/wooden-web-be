@@ -265,7 +265,7 @@ const getDetailWorkOrderByProduct = async(productId) => {
 const updateImageAndStatusProduct = async(id, productBody) => {
     const transaction = await sequelize.transaction();
     try {
-        const { status, nameImage, urlImage } = productBody;
+        const { status, nameImage, urlImage, length, width, height } = productBody;
         const productDB = await Product.findByPk(id, { transaction });
         if(!productDB){
             throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi này.")
@@ -276,12 +276,23 @@ const updateImageAndStatusProduct = async(id, productBody) => {
         productDB.proccess = 'completed_100%',
         productDB.completed_date = new Date().toISOString();
         await productDB.save({ transaction });
+
+        // cập nhật kích thước cho sản phẩm
+        const dimensionProductDB = await DimensionProduct.findOne({
+            where: { product_id: productDB.id }
+        }, { transaction })
+        dimensionProductDB.length = length;
+        dimensionProductDB.width = width;
+        dimensionProductDB.height = height;
+        await dimensionProductDB.save({ transaction })
         
+        // cập nhật status của order
         const orderDB = await Order.findOne({
             where: { id: productDB.order_id }
         }, { transaction });
         orderDB.proccess = 'in_progress_75%'
         await orderDB.save({ transaction })
+
         await transaction.commit()
     } catch (error) {
         if(error instanceof ApiError) throw error;

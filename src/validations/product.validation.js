@@ -13,7 +13,10 @@ const updateImageAndStatusProduct = {
     body: Joi.object().keys({
         status: Joi.string().required(),
         nameImage: Joi.string().required(),
-        urlImage: Joi.string().required()
+        urlImage: Joi.string().required(),
+        length: Joi.string().required(),
+        width: Joi.string().required(),
+        height: Joi.string().required(),
     })
 }
 
