@@ -1,14 +1,18 @@
-const { User, Token, UserMenu, Menu, UserAction, MenuAction } = require('../models');
+const { User, Token, UserMenu, Menu, UserAction, MenuAction, sequelize } = require('../models');
 const bcrypt = require('bcryptjs');
 const { StatusCodes } = require('http-status-codes');
 const ApiError = require('../utils/ApiError');
 const userService = require('../services/user.service');
 
 // Đăng nhập
-const loginWithEmailAndPassword = async (email, password) => {
+const loginWithEmailAndPassword = async (account, password) => {
     try {
+        const normalizedEmail = account.toLowerCase();
         const userDB = await User.findOne({ 
-            where: { email }
+            where: sequelize.where(
+                sequelize.fn('LOWER', sequelize.col('account')),
+                normalizedEmail
+            )
         });
         if(!userDB || !(await bcrypt.compare(password, userDB.password))) {
             throw new ApiError(StatusCodes.UNAUTHORIZED, 'Tên đăng nhập hoặc mật khẩu không chính xác');

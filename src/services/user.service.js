@@ -23,7 +23,7 @@ const isEmailTaken = async (email) => {
 
 // Tạo tài khoản
 const createUser = async(userBody) => {
-    const { fullName, dob, role, code, email, password, gender, phone, work, department, address, avatarUrl, nameImage } = userBody;
+    const { fullName, dob, role, code, email, password, gender, phone, work, department, address, avatarUrl, nameImage, account } = userBody;
     try {
         if(await isEmailTaken(email)){
             throw new ApiError(StatusCodes.BAD_REQUEST, 'Email đã tồn tại.');
@@ -31,7 +31,7 @@ const createUser = async(userBody) => {
         // Hash bằng bcrypt
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await User.create({
-            full_name: fullName, dob, role, code, email, password: hashedPassword, gender, phone, work, department, address, avatar_url: avatarUrl, name_image: nameImage, is_active: true, is_reset: false
+            full_name: fullName, dob, role, code, email, account, password: hashedPassword, gender, phone, work, department, address, avatar_url: avatarUrl, name_image: nameImage, is_active: true, is_reset: false
         })
         user.password = undefined; // Không trả về password
         return user;
@@ -58,6 +58,7 @@ const queryListAccounts = async(queryOptions) => {
                 { code: { [Op.iLike]: `%${searchTerm}%` }},
                 { phone: { [Op.iLike]: `%${searchTerm}%` }},
                 { department: { [Op.iLike]: `%${searchTerm}%` }},
+                { account: { [Op.iLike]: `%${searchTerm}%` }}
             ]
         };
 
@@ -73,6 +74,7 @@ const queryListAccounts = async(queryOptions) => {
             return {
                 id: newAccount.id,
                 email: newAccount.email,
+                account: newAccount.account,
                 fullName: newAccount.full_name,
                 role: newAccount.role,
                 dob: newAccount.dob,
@@ -122,6 +124,7 @@ const queryListUser = async(queryOptions) => {
             return {
                 id: newAccount.id,
                 email: newAccount.email,
+                account: newAccount.account,
                 fullName: newAccount.full_name,
                 role: newAccount.role,
                 dob: newAccount.dob,
@@ -184,6 +187,7 @@ const queryListDecentralizedAccounts = async(queryOptions) => {
             return {
                 id: newAccount.id,
                 email: newAccount.email,
+                account: newAccount.account,
                 fullName: newAccount.full_name,
                 role: newAccount.role,
                 dob: newAccount.dob,
@@ -264,6 +268,7 @@ const mapPermissionByTree = (userRole) => {
         return {
             id: user.id,
             email: user.email,
+            account: user.account,
             fullName: user.full_name,
             role: user.role,
             dob: user.dob,
