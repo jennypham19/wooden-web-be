@@ -1041,6 +1041,66 @@ const queryOrdersWithWorkByIdManager = async(queryOptions) => {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
 }
+
+// Xóa đơn hàng
+const deletedOrder = async(id) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const orderDB = Order.findByPk(id, { transaction });
+        if (!orderDB) {
+        throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại đơn hàng");
+        }
+        /* ----------- TH1: Xóa đơn hàng vừa mới tạo (trạng thái: Chưa hoạt động) ----------- */
+        // Lấy thông tin tài liệu đính kèm và tài liệu tham khảo được gắn với đơn hàng
+        const orderInputFilesDB = await OrderInputFile.findAll({
+            where: { order_id: id },
+            transaction
+        });
+        const orderReferenceLinksDB = await OrderReferenceLink.findAll({
+            where: { order_id: id},
+            transaction
+        })
+
+        // Lấy tài liệu đính kèm và tài liệu tham khảo và xóa
+        for(const orderInputFile of orderInputFilesDB){
+            const inputFilesDB = await InputFile.destroy({
+                where: { id: orderInputFile.input_file_id},
+                transaction
+            });
+        }
+        for(const referenceLink of orderReferenceLinksDB){
+            const referenceLinksDB = await ReferenceLink.destroy({
+                where: { id: referenceLink.reference_link_id },
+                transaction
+            });
+        }
+
+        // Lấy thông tin sản phẩm
+        const productsDB = await Product.findAll({
+            where: { order_id: id },
+            transaction
+        })
+        // Lấy kích thước của sản phẩm (nếu có) và xóa
+        for(const product of productsDB){
+            await DimensionProduct.destroy({ where: { product_id: product.id }, transaction })
+        }
+
+        // Xóa thông tin tài liệu đính kèm và tài liệu tham khảo được gắn với đơn hàng, sản phẩm và đơn hàng
+        await OrderInputFile.destroy({ where: { order_id: id }, transaction })
+        await OrderReferenceLink.destroy({ where: { order_id: id }, transaction })
+        await OrderReferenceLink.destroy({ where: { order_id: id }, transaction })
+        await Product.destroy({ where: { order_id: id }, transaction })
+        await Order.destroy({ where: { id } , transaction })
+
+        await transaction.commit();
+    } catch (error) {
+        await transaction.rollback();
+        if (error instanceof ApiError) {
+        throw error;
+        }
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
 module.exports = {
     createOrder,
     queryOrders,
@@ -1056,5 +1116,6 @@ module.exports = {
     queryOrdersWithWorkByIdManager,
     deleteStepAdded,
     insertDataToTableHistoryWithStatusRework,
-    insertDataToTableHistoryWithStatusApproved
+    insertDataToTableHistoryWithStatusApproved,
+    deletedOrder
 }

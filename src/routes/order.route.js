@@ -81,4 +81,11 @@ router.get('/list-orders-by-manager', validate(orderValidation.queryOrders), ord
 /* Lấy danh sách đơn hàng có công việc được tạo bởi id quản lý */
 router.get('/list-orders-with-work-by-manager', validate(orderValidation.queryOrders), orderController.queryOrdersWithWorkByIdManager)
 
+/* Xóa đơn hàng vừa được tạo */
+router.delete(
+    '/order-added-deleted/:id',
+    validate(baseValidation.queryOption),
+    orderController.deleteOrder
+)
+
 module.exports = router;

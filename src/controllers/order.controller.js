@@ -84,6 +84,12 @@ const deleteStepAdded = catchAsync(async(req, res) => {
     await orderService.deleteStepAdded(req.params.id);
     res.status(StatusCodes.OK).send({ success: true, message: 'Xóa bản ghi thành công.'})
 })
+
+// Xóa đơn hàng
+const deleteOrder = catchAsync(async(req, res) => {
+    await orderService.deletedOrder(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Xóa đơn hàng thành công.'})
+})
 module.exports = {
     createOrder,
     queryOrders,
@@ -97,5 +103,6 @@ module.exports = {
     queryOrdersWithProccess,
     queryOrdersByIdManager,
     queryOrdersWithWorkByIdManager,
-    deleteStepAdded
+    deleteStepAdded,
+    deleteOrder
 }
