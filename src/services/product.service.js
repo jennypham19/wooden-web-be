@@ -697,6 +697,15 @@ const queryListStepsByIdWorkMilestone = async(idWorkMilestone) => {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
 }
+
+// Xóa ảnh đã cập nhật nhưng bị sai
+const deleteImageStep = async(id) => {
+    try {
+        await ImageStep.destroy({ where: { id } })
+    } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
 module.exports = {
     queryProductsByOrderId,
     queryProductsByOrderIdAndStatus,
@@ -709,5 +718,6 @@ module.exports = {
     getDataEvaluationProduct,
     getCompletedProducts,
     queryListProductsByOrderId,
-    queryListStepsByIdWorkMilestone
+    queryListStepsByIdWorkMilestone,
+    deleteImageStep
 }

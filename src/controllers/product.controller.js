@@ -80,6 +80,12 @@ const getListStepsByIdWorkMilestone = catchAsync(async(req, res) => {
     res.status(StatusCodes.OK).send({ success: true, message: 'Lấy danh sách các bước thành công.', data: steps})
 })
 
+// Xóa ảnh đã cập nhật nhưng bị sai
+const deleteImageStep = catchAsync(async(req, res) => {
+    await productService.deleteImageStep(req.params.id);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Xóa hình ảnh thành công.' })
+})
+
 module.exports = {
     queryProductsByOrderId,
     queryProductsByOrderIdAndStatus,
@@ -92,5 +98,6 @@ module.exports = {
     getDataProductReview,
     getCompletedProducts,
     queryListProductsByOrderId,
-    getListStepsByIdWorkMilestone
+    getListStepsByIdWorkMilestone,
+    deleteImageStep
 }
