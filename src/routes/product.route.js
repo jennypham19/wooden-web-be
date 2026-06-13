@@ -94,4 +94,11 @@ router.get(
     validate(baseValidation.queryOption),
     productController.getListStepsByIdWorkMilestone
 )
+
+/* Xóa hình ảnh đã cập nhật nhưng bị sai */
+router.delete(
+    '/delete-image-step/:id',
+    validate(baseValidation.queryOption),
+    productController.deleteImageStep
+)
 module.exports = router;

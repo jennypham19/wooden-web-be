@@ -823,7 +823,10 @@ const queryOrdersByIdManager = async(queryOptions) => {
                 name: newOrder.name,
                 customer: {
                     id: newOrder.ordersCustomer.id,
-                    name: newOrder.ordersCustomer.name
+                    name: newOrder.ordersCustomer.name,
+                    phone: newOrder.ordersCustomer.phone,
+                    address: newOrder.ordersCustomer.address,
+                    type: newOrder.ordersCustomer.type
                 },
                 codeOrder: newOrder.code_order,
                 dateOfReceipt: newOrder.date_of_receipt,
@@ -1080,10 +1083,37 @@ const deletedOrder = async(id) => {
             where: { order_id: id },
             transaction
         })
-        // Lấy kích thước của sản phẩm (nếu có) và xóa
+        /* ----------- TH2: Xóa đơn hàng đã được tạo và đã thêm công việc (trạng thái: Đang hoạt động) ----------- */
+        // Lấy kích thước của sản phẩm (nếu có) và xóa; Lấy công việc theo sản phẩm
         for(const product of productsDB){
-            await DimensionProduct.destroy({ where: { product_id: product.id }, transaction })
+            await DimensionProduct.destroy({ where: { product_id: product.id }, transaction });
+            const workOrderDB = await WorkOrder.findOne({
+                where: { product_id: product.id },
+                transaction
+            });
+            if(workOrderDB !== null){
+                const workersDB = await Worker.findAll({
+                    where: { worker_order_id: workOrderDB.id }
+                })
+                const workMilestonesDB = await WorkMilestone.findAll({
+                    where: { work_order_id: workOrderDB.id },
+                    transaction
+                })
+                // Xóa các bước
+                for(const workMilestone of workMilestonesDB){
+                    await Step.destroy({ where: { work_milestone_id: workMilestone.id }}, { transaction })
+                }
+
+                // Xóa các mốc
+                await WorkMilestone.destroy({ where: { work_order_id: workOrderDB.id }}, { transaction })
+
+                // Xóa công việc, thợ
+                await Worker.destroy({ where: { worker_order_id: workOrderDB.id }}, { transaction });
+                await WorkOrder.destroy({ where: { product_id: product.id }}, { transaction })                
+            }
+
         }
+
 
         // Xóa thông tin tài liệu đính kèm và tài liệu tham khảo được gắn với đơn hàng, sản phẩm và đơn hàng
         await OrderInputFile.destroy({ where: { order_id: id }, transaction })
@@ -1098,6 +1128,26 @@ const deletedOrder = async(id) => {
         if (error instanceof ApiError) {
         throw error;
         }
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
+
+// update lại hình ảnh của step
+const updateImagesStepAgain = async(id, imagesBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { images } = imagesBody;
+        const stepDB = await Step.findByPk(id, { transaction });
+        if(!stepDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bước này");
+        };
+        for(const image of images){
+            await ImageStep.create({ name: image.name, url: image.url, step_id: id }, { transaction })
+        };
+        await transaction.commit()
+    } catch (error) {
+        await transaction.rollback();
+        if(error instanceof ApiError) { throw error };
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
 }
@@ -1117,5 +1167,6 @@ module.exports = {
     deleteStepAdded,
     insertDataToTableHistoryWithStatusRework,
     insertDataToTableHistoryWithStatusApproved,
-    deletedOrder
+    deletedOrder,
+    updateImagesStepAgain
 }
