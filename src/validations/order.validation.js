@@ -172,6 +172,15 @@ const queryOrdersWithProccess = {
     })
 }
 
+const updateImagesStepAgain = {
+    params: Joi.object().keys({
+        id: Joi.string().required()
+    }),
+    body: Joi.object().keys({
+        images: Joi.array().required()
+    })
+}
+
 module.exports = {
     createOrder,
     queryOrders,
@@ -182,5 +191,6 @@ module.exports = {
     createAddStep,
     updateProccessOrder,
     updateOrder,
-    queryOrdersWithProccess
+    queryOrdersWithProccess,
+    updateImagesStepAgain
 }

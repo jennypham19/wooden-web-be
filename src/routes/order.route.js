@@ -88,4 +88,11 @@ router.delete(
     orderController.deleteOrder
 )
 
+/* Thêm hình ảnh của bước đó */
+router.put(
+    '/image-step-again-updated/:id',
+    validate(orderValidation.updateImagesStepAgain),
+    orderController.updateImagesStepAgain
+)
+
 module.exports = router;

@@ -1131,6 +1131,26 @@ const deletedOrder = async(id) => {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
     }
 }
+
+// update lại hình ảnh của step
+const updateImagesStepAgain = async(id, imagesBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { images } = imagesBody;
+        const stepDB = await Step.findByPk(id, { transaction });
+        if(!stepDB){
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bước này");
+        };
+        for(const image of images){
+            await ImageStep.create({ name: image.name, url: image.url, step_id: id }, { transaction })
+        };
+        await transaction.commit()
+    } catch (error) {
+        await transaction.rollback();
+        if(error instanceof ApiError) { throw error };
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+    }
+}
 module.exports = {
     createOrder,
     queryOrders,
@@ -1147,5 +1167,6 @@ module.exports = {
     deleteStepAdded,
     insertDataToTableHistoryWithStatusRework,
     insertDataToTableHistoryWithStatusApproved,
-    deletedOrder
+    deletedOrder,
+    updateImagesStepAgain
 }
