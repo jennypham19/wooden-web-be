@@ -211,7 +211,9 @@ const getDetailOrder = async(id) => {
                     model: User,
                     as: 'orderManagers'
                 }
-            ]
+            ],
+            order: [[ 'createdAt', 'DESC'], [ 'orderProducts', 'createdAt', 'ASC']],
+            distinct: true
         });
         const newOrder = orderDB.toJSON();
         const order = {
@@ -371,9 +373,13 @@ const queryOrdersByCarpenterId = async(queryOptions) => {
             ],
             limit,
             offset,
-            order: [[ 'createdAt', 'DESC']],
+            order: [
+                [ 'createdAt', 'DESC'],
+                [ 'orderProducts', 'createdAt', 'ASC']
+            ],
             distinct: true
         });
+        
         const totalPages = Math.ceil(count/limit);
         const orders = ordersByCarpenterIdDB.map((order) => {
             const newOrder = order.toJSON();
@@ -396,6 +402,7 @@ const queryOrdersByCarpenterId = async(queryOptions) => {
                 isCreatedWork: newOrder.is_created_work,
                 createdBy: newOrder.created_by,
                 reason: newOrder.reason,
+                isStored: newOrder.is_stored,
                 products: (newOrder.orderProducts ?? [])
                     .filter((el) => el.order_id === newOrder.id)
                     .map((product) => {

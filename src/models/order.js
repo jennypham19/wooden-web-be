@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
                 foreignKey: 'order_id',
                 as: 'orderReferenceLinks'
             }),
-            Order.hasOne(models.WorkOrder, {
+            Order.hasMany(models.WorkOrder, {
                 foreignKey: 'order_id',
                 as: 'orderWorkOrder'
             }),
