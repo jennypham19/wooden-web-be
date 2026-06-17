@@ -67,7 +67,7 @@ const queryOrdersWithProccess = catchAsync(async(req, res) => {
 
 /* ------------- Lấy danh sách đơn hàng theo id quản lý ------------- */
 const queryOrdersByIdManager = catchAsync(async(req, res) => {
-    const queryOptions = pick(req.query, ['page', 'limit', 'searchTerm', 'status', 'id']);
+    const queryOptions = pick(req.query, ['page', 'limit', 'searchTerm', 'status', 'isStored', 'id']);
     const orders = await orderService.queryOrdersByIdManager(queryOptions);
     res.status(StatusCodes.OK).send({ success: true, message: 'Lấy danh sách thành công.', data: orders })
 })
@@ -96,6 +96,24 @@ const updateImagesStepAgain = catchAsync(async(req, res) => {
     await orderService.updateImagesStepAgain(req.params.id, req.body);
     res.status(StatusCodes.OK).send({ success: true, message: 'Thêm hình ảnh thành công.' })
 })
+
+// update lưu trữ đơn hàng
+const updateStorageOrder = catchAsync(async(req, res) => {
+    await orderService.updateStorageOrder(req.params.id, req.body);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Lưu trữ đơn hàng thành công. '})
+})
+
+// delete all images step
+const deleteAllImagesStepByManager = catchAsync(async(req, res) => {
+    await orderService.deleteAllImagesStepByManager(req.params.id, req.body);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Xóa tất cả các ảnh thành công. '})
+})
+
+// delete image step
+const deleteImageStepByManager = catchAsync(async(req, res) => {
+    await orderService.deleteImageStepByManager(req.params.id, req.body);
+    res.status(StatusCodes.OK).send({ success: true, message: 'Xóa hình ảnh thành công. '})
+})
 module.exports = {
     createOrder,
     queryOrders,
@@ -111,5 +129,8 @@ module.exports = {
     queryOrdersWithWorkByIdManager,
     deleteStepAdded,
     deleteOrder,
-    updateImagesStepAgain
+    updateImagesStepAgain,
+    updateStorageOrder,
+    deleteAllImagesStepByManager,
+    deleteImageStepByManager
 }

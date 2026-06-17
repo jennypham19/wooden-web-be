@@ -12,6 +12,10 @@ module.exports = (sequelize, DataTypes) => {
                 as: 'stepImageSteps'
             });
             Step.belongsTo(models.User, {
+                foreignKey: 'manager_deleted_id',
+                as: 'stepManagerDeleted'
+            });
+            Step.belongsTo(models.User, {
                 foreignKey: 'created_by',
                 as: 'stepCreatedByUser'
             });
@@ -35,7 +39,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         // quá trình
         proccess: {
-            type: DataTypes.ENUM('pending', 'in_progress', 'completed'),
+            type: DataTypes.ENUM('pending', 'in_progress', 'completed', 'retake_required'),
             allowNull: false,
             defaultValue: 'pending'
         },
@@ -50,6 +54,18 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false
         },
         created_by: {
+            type: DataTypes.UUID,
+            allowNull: true
+        },
+        reason_deleted_image_step: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        date_deleted_image_step: {
+            type: DataTypes.DATE,
+            allowNull: true
+        },
+        manager_deleted_id: {
             type: DataTypes.UUID,
             allowNull: true
         }

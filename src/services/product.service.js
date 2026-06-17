@@ -241,6 +241,8 @@ const getDetailWorkOrderByProduct = async(productId) => {
                         version: workMilestone.version,
                         steps: (workMilestone.workMilestoneSteps ?? [])
                             .map((step) => {
+                                console.log("step: ", step);
+                                
                                 return {
                                     id: step.id,
                                     name: step.name,
@@ -248,6 +250,8 @@ const getDetailWorkOrderByProduct = async(productId) => {
                                     progress: step.progress,
                                     createdAt: step.createdAt,
                                     updatedAt: step.updatedAt,
+                                    reasonDeletedImageStep: step.reason_deleted_image ? step.reason_deleted_image : null,
+                                    dateDeletedImageStep: step.date_deleted_image_s ? step.date_deleted_image_s : null,
                                     images: step.stepImageSteps
                                 }
                             })

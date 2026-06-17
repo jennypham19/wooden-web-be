@@ -61,6 +61,10 @@ module.exports = (sequelize, DataTypes) => {
                 foreignKey: 'created_by',
                 as: 'createdByStep'
             });
+            User.hasMany(models.Step, {
+                foreignKey: 'manager_deleted_id',
+                as: 'managerDeletedStep'
+            });
             User.hasMany(models.Feedback, {
                 foreignKey: 'staff_id',
                 as: 'staffFeedback'

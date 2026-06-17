@@ -95,4 +95,24 @@ router.put(
     orderController.updateImagesStepAgain
 )
 
+/* lưu trữ đơn hàng */
+router.put(
+    '/order-storage/:id',
+    validate(orderValidation.updateStorageOrder),
+    orderController.updateStorageOrder
+)
+
+/* xóa tất cả các ảnh */
+router.put(
+    '/images-step-deleted-by-manager/:id',
+    validate(orderValidation.deletedImagesStep),
+    orderController.deleteAllImagesStepByManager
+)
+
+/* Xóa hình ảnh */
+router.put(
+    '/image-step-deleted-by-manager/:id',
+    validate(orderValidation.deletedImageStep),
+    orderController.deleteImageStepByManager
+)
 module.exports = router;

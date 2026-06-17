@@ -68,6 +68,7 @@ const queryOrders = {
         limit: Joi.number().integer().min(1).max(100).default(10),
         searchTerm: Joi.string().optional(), 
         status: Joi.string().optional(),
+        isStored: Joi.string().optional(),
         id: Joi.string().optional()
     })
 }
@@ -181,6 +182,41 @@ const updateImagesStepAgain = {
     })
 }
 
+const updateStorageOrder = {
+    params: Joi.object().keys({
+        id: Joi.string().required()
+    }),
+    body: Joi.object().keys({
+        reasonStorage: Joi.string().required(),
+        dateStorage: Joi.string().required()
+    })
+}
+
+// delete images step
+const deletedImagesStep = {
+    params: Joi.object().keys({
+        id: Joi.string().required()
+    }),
+    body: Joi.object().keys({
+        reasonDeletedImageStep: Joi.string().required(),
+        dateDeletedImageStep: Joi.string().required(),
+        managerDeletedId: Joi.string().required()
+    }) 
+}
+
+// delete images step
+const deletedImageStep = {
+    params: Joi.object().keys({
+        id: Joi.string().required()
+    }),
+    body: Joi.object().keys({
+        reasonDeletedImageStep: Joi.string().required(),
+        dateDeletedImageStep: Joi.string().required(),
+        managerDeletedId: Joi.string().required(),
+        stepId: Joi.string().required()
+    }) 
+}
+
 module.exports = {
     createOrder,
     queryOrders,
@@ -192,5 +228,8 @@ module.exports = {
     updateProccessOrder,
     updateOrder,
     queryOrdersWithProccess,
-    updateImagesStepAgain
+    updateImagesStepAgain,
+    updateStorageOrder,
+    deletedImagesStep,
+    deletedImageStep
 }

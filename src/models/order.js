@@ -145,6 +145,21 @@ module.exports = (sequelize, DataTypes) => {
         internal_note: {
             type: DataTypes.TEXT,
             allowNull: true
+        },
+        // Cột is_stored: trạng thái lưu trữ
+        is_stored: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
+        // Cột reason_storage: lý do lưu trữ
+        reason_storage: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+        // Cột date_storage: ngày lưu trữ
+        date_storage: {
+            type: DataTypes.DATE,
+            allowNull: true
         }
     }, {
         sequelize,
