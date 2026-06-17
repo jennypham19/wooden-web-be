@@ -775,12 +775,23 @@ const queryOrdersWithProccess = async(queryOptions) => {
 /* Lấy danh sách đơn hàng theo id của người quản lý */
 const queryOrdersByIdManager = async(queryOptions) => {
     try {
-        const { page, limit, searchTerm, status, id } = queryOptions;
+        const { page, limit, searchTerm, status, isStored, id } = queryOptions;
         const offset = (page - 1) * limit;
         const whereClause = { manager_id: id };
-        if(status && status !== 'all'){
-            whereClause.status = status;
+        
+        // Lưu trữ
+        if(isStored === true || isStored === 'true') {
+            whereClause.status = 'completed',
+            whereClause.is_stored = true
+        } else {
+            // 3 tab còn lại
+            whereClause.is_stored = false;
+            if(status && status !== 'all'){
+                whereClause.status = status;
+            }            
         }
+        
+
         if(searchTerm){
             whereClause[Op.or] = [
                 { code_order: { [Op.iLike]: `%${searchTerm}%` }},
@@ -840,6 +851,9 @@ const queryOrdersByIdManager = async(queryOptions) => {
                 isCreatedWork: newOrder.is_created_work,
                 createdBy: newOrder.created_by,
                 reason: newOrder.reason,
+                isStored: newOrder.is_stored,
+                reasonStorage: newOrder.reason_storage,
+                dateStorage: newOrder.date_storage,
                 manager: {
                     fullName: newOrder.orderManagers.full_name,
                     role: newOrder.orderManagers.role,
@@ -1148,7 +1162,81 @@ const updateImagesStepAgain = async(id, imagesBody) => {
     } catch (error) {
         await transaction.rollback();
         if(error instanceof ApiError) { throw error };
-        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra: " + error.message)
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra upload lại hình ảnh: " + error.message)
+    }
+}
+
+// update lưu trữ đơn hàng
+const updateStorageOrder = async(id, storageOrderBody) => {
+    try {
+        const orderDB = await Order.findByPk(id);
+        if(!orderDB) {
+            throw new ApiError(StatusCodes.NOT_FOUND, "Không tồn tại bản ghi nào.");
+        }
+        orderDB.reason_storage = storageOrderBody.reasonStorage;
+        orderDB.date_storage = storageOrderBody.dateStorage;
+        orderDB.is_stored = true;
+        await orderDB.save();
+    } catch (error) {
+        if(error instanceof ApiError) { throw error };
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra khi lưu trữ đơn hàng: " + error.message)
+    }
+}
+
+// delete all images step
+const deleteAllImagesStepByManager = async(id, deletedImagesStepBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { reasonDeletedImageStep, dateDeletedImageStep, managerDeletedId } = deletedImagesStepBody;
+        const stepDB = await Step.findByPk(id, { transaction });
+        stepDB.reason_deleted_image_step = reasonDeletedImageStep,
+        stepDB.date_deleted_image_step = dateDeletedImageStep,
+        stepDB.manager_deleted_id = managerDeletedId,
+        stepDB.proccess = 'retake_required',
+        stepDB.progress = '0%'
+        await stepDB.save({ transaction });
+        await ImageStep.destroy({ where: { step_id: id }, transaction })
+        await transaction.commit()
+    } catch (error) {
+        await transaction.rollback();
+        if(error instanceof ApiError) { throw error };
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra khi xóa tất cả hình ảnh: " + error.message)    
+    }
+}
+
+// delete image step
+const deleteImageStepByManager = async(id, deletedImageStepBody) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { reasonDeletedImageStep, dateDeletedImageStep, managerDeletedId, stepId } = deletedImageStepBody;
+        // Lưu thông tin xóa ảnh
+        await Step.update({
+            reason_deleted_image_step: reasonDeletedImageStep,
+            date_deleted_image_step: dateDeletedImageStep,
+            manager_deleted_id: managerDeletedId
+        }, { where: { id: stepId } , transaction });
+
+        // Xóa ảnh
+        await ImageStep.destroy({ where: { id }, transaction });
+
+        // Kiểm tra bước còn ảnh hay không
+        const remainingImages = await ImageStep.count({
+            where: { step_id: stepId },
+            transaction
+        });
+
+        // Không còn ảnh nào => cập nhật trạng thái step
+        if(remainingImages === 0){
+            await Step.update({
+                proccess: 'retake_required',
+                progress: '0%'  
+            }, { where: { id: stepId }, transaction })
+        }
+        await transaction.commit()
+    } catch (error) {
+        await transaction.rollback();
+        if(error instanceof ApiError) { throw error };
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra khi xóa hình ảnh: " + error.message)        
     }
 }
 module.exports = {
@@ -1168,5 +1256,7 @@ module.exports = {
     insertDataToTableHistoryWithStatusRework,
     insertDataToTableHistoryWithStatusApproved,
     deletedOrder,
-    updateImagesStepAgain
+    updateImagesStepAgain,
+    deleteAllImagesStepByManager,
+    deleteImageStepByManager
 }
