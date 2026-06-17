@@ -72,6 +72,9 @@ const queryProductsByOrderId = async(orderId) => {
                     include: [{ model: User, as: 'orderManagers' }] 
                 },
                 { model: DimensionProduct, as: 'productDimension' }
+            ],
+            order: [
+                [ 'createdAt', 'ASC']
             ]
         });
         for(const product of productsDB){
@@ -241,8 +244,6 @@ const getDetailWorkOrderByProduct = async(productId) => {
                         version: workMilestone.version,
                         steps: (workMilestone.workMilestoneSteps ?? [])
                             .map((step) => {
-                                console.log("step: ", step);
-                                
                                 return {
                                     id: step.id,
                                     name: step.name,
