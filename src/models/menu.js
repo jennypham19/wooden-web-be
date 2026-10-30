@@ -52,6 +52,11 @@ module.exports = (sequelize, DataTypes) => {
         is_actived: {
             type: DataTypes.BOOLEAN,
             defaultValue: true
+        },
+        sort_order: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            comment: 'Thứ tự hiển thị quyền'
         }
     }, {
         sequelize,
