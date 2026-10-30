@@ -90,9 +90,14 @@ const createMenu = async(menuBody) => {
     const transaction = await sequelize.transaction();
     try {
         const { code, name, path, icon, parentCode, actions } = menuBody;
+
+        // Lấy số thứ tự hiển thị cao nhất
+        const maxSortOrder = await Menu.max('sort_order');
+        const sortOrder = (maxSortOrder ?? 0) + 10;
+
         // 1. Tạo menu
         const menu = await Menu.create(
-            { code, name, path, icon, parent_code: parentCode},
+            { code, name, path, icon, parent_code: parentCode, sort_order: sortOrder },
             { transaction }
         ) 
         // 2. Kiểm tra actions
@@ -146,7 +151,8 @@ const getMenus = async (queryOptions) => {
                 ...newMenu,
                 parentCode: newMenu.parent_code,
                 parentName: data ? data.name : null,
-                isActived: newMenu.is_actived
+                isActived: newMenu.is_actived,
+                sortOrder: newMenu.sort_order
             }
         })
         const totalPages = Math.ceil(count/limit);
